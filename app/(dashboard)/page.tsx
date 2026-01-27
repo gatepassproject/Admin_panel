@@ -131,6 +131,7 @@ export default function DashboardPage() {
     const [statsData, setStatsData] = React.useState<any>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [gateScans, setGateScans] = React.useState<{ [key: number]: number }>({});
 
     React.useEffect(() => {
         const fetchStats = async () => {
@@ -150,6 +151,14 @@ export default function DashboardPage() {
         // Refresh every 30 seconds
         const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
+    }, []);
+
+    // Initialize gate scans on client side only to prevent hydration errors
+    React.useEffect(() => {
+        setGateScans({
+            1: Math.floor(Math.random() * 200) + 100,
+            2: Math.floor(Math.random() * 200) + 100,
+        });
     }, []);
 
     const dashboardStats = [
@@ -359,7 +368,7 @@ export default function DashboardPage() {
                                     <div className="mt-4 pt-4 border-t border-slate-200/60 flex items-center justify-between">
                                         <div>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Today's Scans</p>
-                                            <p className="text-sm font-bold text-slate-700">{Math.floor(Math.random() * 200) + 100}</p>
+                                            <p className="text-sm font-bold text-slate-700">{gateScans[gate] || 0}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Last Activity</p>
