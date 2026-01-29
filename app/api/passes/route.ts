@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db1 } from '@/lib/firebase-admin';
+import { db2 } from '@/lib/firebase-admin';
 
 export async function GET(request: Request) {
     try {
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
         const status = searchParams.get('status');
         const student_id = searchParams.get('student_id');
 
-        let query = db1.collection('gate_passes');
+        let query = db2.collection('gate_passes');
 
         if (status) {
             // @ts-ignore
@@ -37,7 +37,7 @@ export async function PATCH(request: Request) {
 
         if (!id) throw new Error('Pass ID is required');
 
-        await db1.collection('gate_passes').doc(id).update({
+        await db2.collection('gate_passes').doc(id).update({
             status,
             remarks,
             updated_at: new Date().toISOString()

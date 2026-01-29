@@ -17,6 +17,7 @@ import {
     Eye,
     Edit2
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export default function StudentsPage() {
@@ -31,7 +32,7 @@ export default function StudentsPage() {
     const [newStudent, setNewStudent] = React.useState({
         full_name: '',
         email: '',
-        password: 'Password123!', // Default password
+        password: '',
         student_id: '',
         dept: 'CS',
         year: '1',
@@ -105,13 +106,13 @@ export default function StudentsPage() {
                         <Download className="w-4 h-4" />
                         <span>Export</span>
                     </button>
-                    <button
-                        onClick={() => setIsAddModalOpen(true)}
+                    <Link
+                        href="/users/students/add"
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Add Student</span>
-                    </button>
+                    </Link>
                 </div>
             </div>
 
@@ -307,11 +308,11 @@ export default function StudentsPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Roll / ID Number</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Registration Number</label>
                                     <input
                                         required
                                         type="text"
-                                        placeholder="CT2026..."
+                                        placeholder="Reg No (e.g. CT2026...)"
                                         className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold placeholder:text-slate-300"
                                         value={newStudent.student_id}
                                         onChange={e => setNewStudent({ ...newStudent, student_id: e.target.value })}
@@ -333,14 +334,14 @@ export default function StudentsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Campus Email</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Login Password</label>
                                 <input
                                     required
-                                    type="email"
-                                    placeholder="student@ctgroup.in"
+                                    type="text"
+                                    placeholder="Set login password"
                                     className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold placeholder:text-slate-300"
-                                    value={newStudent.email}
-                                    onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
+                                    value={newStudent.password}
+                                    onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
                                 />
                             </div>
                             <div className="flex items-center gap-4 pt-6">

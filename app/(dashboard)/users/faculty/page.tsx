@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React from 'react';
 import {
     Users,
@@ -43,8 +45,8 @@ export default function FacultyPage() {
         try {
             setIsLoading(true);
             const url = selectedDept === 'All'
-                ? '/api/users?role=faculty'
-                : `/api/users?role=faculty&dept=${selectedDept}`;
+                ? '/api/users?role=faculty,hod,principal'
+                : `/api/users?role=faculty,hod,principal&dept=${selectedDept}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch faculty');
             const data = await response.json();
@@ -315,6 +317,31 @@ export default function FacultyPage() {
                                         <option>EC</option>
                                         <option>CE</option>
                                         <option>IT</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Designation</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="E.g. Asst. Professor"
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold placeholder:text-slate-300"
+                                        value={newFaculty.designation}
+                                        onChange={e => setNewFaculty({ ...newFaculty, designation: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Access Role</label>
+                                    <select
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-black text-slate-700"
+                                        value={newFaculty.role}
+                                        onChange={e => setNewFaculty({ ...newFaculty, role: e.target.value })}
+                                    >
+                                        <option value="faculty">Faculty</option>
+                                        <option value="hod">Dept. Head (HOD)</option>
+                                        <option value="principal">Principal</option>
                                     </select>
                                 </div>
                             </div>
