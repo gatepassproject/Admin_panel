@@ -20,7 +20,11 @@ import { cn } from '@/lib/utils';
 
 export default function BroadcastSystemPage() {
     const [message, setMessage] = React.useState('');
+    const [title, setTitle] = React.useState(''); // Added title state
     const [selectedChannels, setSelectedChannels] = React.useState(['push']);
+    const [targetAudience, setTargetAudience] = React.useState('All Students & Faculty');
+    const [recentBroadcasts, setRecentBroadcasts] = React.useState<any[]>([]);
+    const [isSending, setIsSending] = React.useState(false);
 
     const toggleChannel = (channel: string) => {
         if (selectedChannels.includes(channel)) {
@@ -30,11 +34,55 @@ export default function BroadcastSystemPage() {
         }
     };
 
-    const recentBroadcasts = [
-        { id: 1, title: 'Campus Maintenance', time: '2h ago', recipients: 'All Students', status: 'Sent' },
-        { id: 2, title: 'Holiday Announcement', time: 'Yesterday', recipients: 'Hostel Block B', status: 'Sent' },
-        { id: 3, title: 'Security Drill - Oct 25', time: '2 days ago', recipients: 'Staff & Security', status: 'Scheduled' },
-    ];
+    React.useEffect(() => {
+        fetchBroadcasts();
+    }, []);
+
+    const fetchBroadcasts = async () => {
+        try {
+            const res = await fetch('/api/utilities/broadcast');
+            if (res.ok) {
+                const data = await res.json();
+                setRecentBroadcasts(data.broadcasts || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch broadcasts', error);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!message) {
+            alert('Please enter a message.');
+            return;
+        }
+        setIsSending(true);
+        try {
+            const res = await fetch('/api/utilities/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title || 'Campus Announcement',
+                    message,
+                    target: targetAudience,
+                    channels: selectedChannels
+                })
+            });
+
+            if (res.ok) {
+                alert('Broadcast sent successfully!');
+                setMessage('');
+                setTitle('');
+                fetchBroadcasts(); // Refresh history
+            } else {
+                alert('failed to send broadcast');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error sending broadcast');
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     return (
         <div className="space-y-8 page-transition pb-20">
@@ -61,12 +109,28 @@ export default function BroadcastSystemPage() {
                         <div className="space-y-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Target Audience</label>
-                                <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-[#c32026]/5">
+                                <select
+                                    value={targetAudience}
+                                    onChange={(e) => setTargetAudience(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-[#c32026]/5"
+                                >
                                     <option>All Students & Faculty</option>
                                     <option>Hostel Block A Only</option>
                                     <option>Security Staff Only</option>
                                     <option>SOE (Engineering) Students</option>
                                 </select>
+                            </div>
+
+                            {/* Added Title Input */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Title (Optional)</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-[#c32026]/5"
+                                    placeholder="Brief Header..."
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -117,9 +181,13 @@ export default function BroadcastSystemPage() {
                                 <Clock className="w-4 h-4" />
                                 Schedule for Later
                             </button>
-                            <button className="flex items-center gap-3 px-10 py-3 bg-[#c32026] hover:bg-[#c32026]/90 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#c32026]/20 transition-all">
+                            <button
+                                onClick={handleSend}
+                                disabled={isSending}
+                                className="flex items-center gap-3 px-10 py-3 bg-[#c32026] hover:bg-[#c32026]/90 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#c32026]/20 transition-all disabled:opacity-50"
+                            >
                                 <Send className="w-4 h-4" />
-                                <span>Broadcast Now</span>
+                                <span>{isSending ? 'Sending...' : 'Broadcast Now'}</span>
                             </button>
                         </div>
                     </div>
@@ -152,7 +220,8 @@ export default function BroadcastSystemPage() {
                     <div className="dashboard-card p-6 divide-y divide-slate-100">
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 font-bold ml-1">Recent Activity</h4>
                         <div className="space-y-6 pt-6">
-                            {recentBroadcasts.map((item) => (
+                            {recentBroadcasts.length === 0 && <p className="text-xs text-slate-400 text-center">No recent broadcasts</p>}
+                            {recentBroadcasts.map((item: any) => (
                                 <div key={item.id} className="group cursor-pointer">
                                     <div className="flex items-start justify-between">
                                         <div className="flex gap-3">
@@ -162,13 +231,10 @@ export default function BroadcastSystemPage() {
                                                 <p className="text-[10px] font-medium text-slate-500 mt-0.5">{item.recipients}</p>
                                                 <div className="flex items-center gap-1.5 mt-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                                     <Clock className="w-3 h-3" />
-                                                    {item.time}
+                                                    {item.time} ({item.date})
                                                 </div>
                                             </div>
                                         </div>
-                                        <button className="p-1.5 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
                                     </div>
                                 </div>
                             ))}

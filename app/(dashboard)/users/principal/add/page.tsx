@@ -5,7 +5,6 @@ import {
     ArrowLeft,
     Camera,
     User,
-    BookOpen,
     Shield,
     RefreshCw,
     Mail,
@@ -19,7 +18,7 @@ import {
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function AddFacultyPage() {
+export default function AddPrincipalPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
     const project = searchParams.get('project') || '1';
@@ -34,9 +33,9 @@ export default function AddFacultyPage() {
         email: '',
         password: '',
         phone: '',
-        dept: '',
-        designation: 'Assistant Professor',
-        role: 'faculty',
+        dept: 'Administration',
+        designation: 'Principal',
+        role: 'principal',
         gender: 'Male'
     });
 
@@ -45,7 +44,7 @@ export default function AddFacultyPage() {
             const fetchUser = async () => {
                 try {
                     const res = await fetch(`/api/users?uid=${uid}&project=${project}`);
-                    if (!res.ok) throw new Error('Failed to fetch user');
+                    if (!res.ok) throw new Error('Failed to fetch principal data');
                     const data = await res.json();
 
                     const [first, ...last] = (data.full_name || '').split(' ');
@@ -55,13 +54,13 @@ export default function AddFacultyPage() {
                         last_name: last.join(' ') || '',
                         email: data.email || '',
                         phone: data.phone || '',
-                        dept: data.dept || data.department || '',
-                        designation: data.designation || 'Assistant Professor',
-                        role: data.role || 'faculty',
+                        dept: data.dept || data.department || 'Administration',
+                        designation: data.designation || 'Principal',
+                        role: data.role || 'principal',
                         gender: data.gender || 'Male'
                     });
                 } catch (err: any) {
-                    setError('Error loading faculty data');
+                    setError('Error loading principal data');
                 } finally {
                     setIsLoadingUser(false);
                 }
@@ -103,9 +102,9 @@ export default function AddFacultyPage() {
                     email: '',
                     password: '',
                     phone: '',
-                    dept: '',
-                    designation: 'Assistant Professor',
-                    role: 'faculty',
+                    dept: 'Administration',
+                    designation: 'Principal',
+                    role: 'principal',
                     gender: 'Male'
                 });
             }
@@ -131,17 +130,17 @@ export default function AddFacultyPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link
-                        href="/users/faculty"
+                        href="/users/principal"
                         className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
                     >
                         <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        Back to Faculty
+                        Back to Principal
                     </Link>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                        {uid ? 'Edit' : 'Add'} Faculty / Authority
+                        {uid ? 'Edit' : 'Add'} Principal
                     </h2>
                     <p className="text-slate-500 font-medium">
-                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register a new faculty member or administrative head.'}
+                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register the College Principal.'}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -163,7 +162,7 @@ export default function AddFacultyPage() {
                     </div>
                     <div>
                         <p className="font-black text-sm uppercase tracking-wider">Success!</p>
-                        <p className="text-sm font-medium opacity-90">Faculty record has been {uid ? 'updated' : 'created'} successfully.</p>
+                        <p className="text-sm font-medium opacity-90">Principal record has been {uid ? 'updated' : 'created'} successfully.</p>
                     </div>
                 </div>
             )}
@@ -181,7 +180,6 @@ export default function AddFacultyPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Module: Professional Information */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -194,7 +192,6 @@ export default function AddFacultyPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        {/* Photo Upload */}
                         <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 group hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
                             <div className="w-24 h-24 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors relative overflow-hidden">
                                 <Camera className="w-10 h-10" />
@@ -202,7 +199,6 @@ export default function AddFacultyPage() {
                             <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600">Upload Photo</p>
                         </div>
 
-                        {/* Form Fields */}
                         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">First Name <span className="text-red-500">*</span></label>
@@ -243,7 +239,6 @@ export default function AddFacultyPage() {
                     </div>
                 </div>
 
-                {/* Module: Login Credentials */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
@@ -260,7 +255,7 @@ export default function AddFacultyPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="john.doe@ctgroup.in"
+                                <input required type="email" placeholder="principal@ctgroup.in"
                                     disabled={!!uid}
                                     className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
                                     value={formData.email}
@@ -287,7 +282,6 @@ export default function AddFacultyPage() {
                     </div>
                 </div>
 
-                {/* Module: Academic Assignment */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
@@ -299,56 +293,20 @@ export default function AddFacultyPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Department <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
-                                value={formData.dept}
-                                onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
-                            >
-                                <option value="">Select Department</option>
-                                <option>Computer Science</option>
-                                <option>Mechanical Engineering</option>
-                                <option>Electronics</option>
-                                <option>Civil Engineering</option>
-                                <option>Administration</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Designation <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Role <span className="text-red-500">*</span></label>
+                            <input disabled type="text" className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500 cursor-not-allowed"
                                 value={formData.designation}
-                                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                            >
-                                <option>Assistant Professor</option>
-                                <option>Associate Professor</option>
-                                <option>HOD</option>
-                                <option>Principal</option>
-                                <option>Director</option>
-                                <option>Administrative Staff</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">System Role <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            >
-                                <option value="faculty">Faculty</option>
-                                <option value="hod">HOD</option>
-                                <option value="principal">Principal</option>
-                                <option value="admission">Admission Cell</option>
-                                <option value="higher_authority">Higher Authority</option>
-                            </select>
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4">
-                    <button type="button" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
+                    <Link href="/users/principal" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
                         Cancel
-                    </button>
+                    </Link>
                     <button
                         type="submit"
                         disabled={isSubmitting}
@@ -361,4 +319,3 @@ export default function AddFacultyPage() {
         </div>
     );
 }
-

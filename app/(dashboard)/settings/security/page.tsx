@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 export default function SecuritySettingsPage() {
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(true);
     const [showPassword, setShowPassword] = React.useState(false);
     const [settings, setSettings] = React.useState({
         mfaEnabled: true,
@@ -29,14 +30,45 @@ export default function SecuritySettingsPage() {
         ipRestriction: false,
     });
 
-    const handleSave = () => {
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.security) setSettings(data.security);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleSave = async () => {
         setIsSaving(true);
-        setIsSaving(true);
-        setTimeout(() => {
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section: 'security', data: settings })
+            });
+            if (res.ok) {
+                alert('Security policies updated successfully.');
+            } else {
+                alert('Failed to save settings.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred.');
+        } finally {
             setIsSaving(false);
-            alert('Security policies updated successfully.');
-        }, 1500);
+        }
     };
+
+    if (isLoading) return <div className="p-10 text-center">Loading settings...</div>;
 
     return (
         <div className="space-y-8 page-transition pb-20">

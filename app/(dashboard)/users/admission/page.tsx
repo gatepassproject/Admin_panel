@@ -7,12 +7,11 @@ import {
     Search,
     Plus,
     Upload,
-    GraduationCap,
+    Briefcase,
     Mail,
     Trash2,
     Eye,
-    ChevronLeft,
-    ChevronRight,
+    ShieldCheck,
     Database,
     Edit2
 } from 'lucide-react';
@@ -21,9 +20,9 @@ import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 
-export default function StudentsPage() {
+export default function AdmissionPage() {
     const {
-        users: students,
+        users,
         isLoading,
         project,
         setProject,
@@ -32,18 +31,14 @@ export default function StudentsPage() {
         setIsViewModalOpen,
         handleDelete,
         handleView
-    } = useUserDashboard('student');
+    } = useUserDashboard('admission');
 
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedBranch, setSelectedBranch] = React.useState('All Branches');
-    const [selectedYear, setSelectedYear] = React.useState('All Years');
 
-    const filteredStudents = students.filter(s =>
-        (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.reg_no?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedBranch === 'All Branches' || s.branch === selectedBranch) &&
-        (selectedYear === 'All Years' || s.year === selectedYear)
+    const filteredStaff = users.filter(f =>
+    (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.email?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -52,10 +47,10 @@ export default function StudentsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                        <GraduationCap className="w-8 h-8 text-[#1e3a5f]" />
-                        Student Directory
+                        <ShieldCheck className="w-8 h-8 text-[#1e3a5f]" />
+                        Admission Cell
                     </h2>
-                    <p className="text-slate-500 font-medium">Manage and monitor student records.</p>
+                    <p className="text-slate-500 font-medium">Manage Admission Department Staff.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
@@ -70,67 +65,30 @@ export default function StudentsPage() {
                         </select>
                     </div>
                     <Link
-                        href="/utilities/bulk"
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-                    >
-                        <Upload className="w-4 h-4 text-[#c32026]" />
-                        <span>Bulk Upload</span>
-                    </Link>
-                    <Link
-                        href={`/users/students/add?project=${project}`}
+                        href={`/users/admission/add?project=${project}`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"
                     >
                         <Plus className="w-4 h-4" />
-                        <span>Add Student</span>
+                        <span>Add Staff</span>
                     </Link>
                 </div>
             </div>
 
             {/* Filters & Search */}
-            <div className="dashboard-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="relative group flex-1 max-w-md">
+            <div className="dashboard-card p-4">
+                <div className="relative group max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1e3a5f] transition-colors" />
                     <input
                         type="text"
-                        placeholder="Search by name, ID or Reg No..."
+                        placeholder="Search staff..."
                         className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] focus:bg-white transition-all outline-none font-bold"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[140px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch:</span>
-                        <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
-                            value={selectedBranch}
-                            onChange={(e) => setSelectedBranch(e.target.value)}
-                        >
-                            <option>All Branches</option>
-                            <option>CSE</option>
-                            <option>ME</option>
-                            <option>ECE</option>
-                            <option>Civil</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[120px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Year:</span>
-                        <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
-                        >
-                            <option>All Years</option>
-                            <option>1st Year</option>
-                            <option>2nd Year</option>
-                            <option>3rd Year</option>
-                            <option>4th Year</option>
-                        </select>
-                    </div>
-                </div>
             </div>
 
-            {/* Content Table */}
+            {/* Content */}
             <div className="dashboard-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -139,85 +97,85 @@ export default function StudentsPage() {
                                 <th className="px-6 py-4">
                                     <input type="checkbox" className="rounded-md border-slate-300 text-[#1e3a5f] focus:ring-[#1e3a5f]" />
                                 </th>
-                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student info</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                [1, 2, 3, 4, 5].map(i => (
+                                [1, 2].map(i => (
                                     <tr key={i} className="animate-pulse">
-                                        <td colSpan={6} className="px-6 py-8 h-24 bg-slate-50/20"></td>
+                                        <td colSpan={6} className="px-6 py-8 h-20 bg-slate-50/20"></td>
                                     </tr>
                                 ))
-                            ) : filteredStudents.length === 0 ? (
+                            ) : filteredStaff.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">
-                                        No students found matching your criteria.
+                                    <td colSpan={6} className="px-6 py-20 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
+                                                <Briefcase className="w-8 h-8 text-slate-300" />
+                                            </div>
+                                            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">No staff found</p>
+                                        </div>
                                     </td>
                                 </tr>
                             ) : (
-                                filteredStudents.map((student) => (
-                                    <tr key={student.id || student.uid} className="hover:bg-slate-50/50 transition-colors group">
+                                filteredStaff.map((f) => (
+                                    <tr key={f.id || f.uid} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <input type="checkbox" className="rounded-md border-slate-300 text-[#1e3a5f] focus:ring-[#1e3a5f]" />
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 bg-[#1e3a5f]/5 rounded-xl flex items-center justify-center text-[#1e3a5f] font-black text-lg shadow-inner">
-                                                    {student.full_name?.[0]}
+                                                    {f.full_name?.[0]}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-slate-900 group-hover:text-[#1e3a5f] transition-colors">{student.full_name}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{student.reg_no || student.uid?.slice(0, 8)}</p>
+                                                    <p className="text-sm font-bold text-slate-900 group-hover:text-[#1e3a5f] transition-colors">{f.full_name}</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{f.faculty_id || f.uid?.slice(0, 8)}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black text-[#1e3a5f]">{student.branch}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{student.year}</p>
-                                            </div>
+                                            <span className="text-xs font-black text-[#1e3a5f]">{f.designation || 'Admission Staff'}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                                    <Mail className="w-3 h-3 text-[#c32026]" />
-                                                    {student.email}
-                                                </div>
+                                            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                                <Mail className="w-3 h-3 text-[#c32026]" />
+                                                {f.email}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={cn(
                                                 "px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border",
-                                                student.status === 'Outside'
+                                                f.status === 'Outside'
                                                     ? "bg-amber-50 text-amber-600 border-amber-100"
                                                     : "bg-emerald-50 text-emerald-600 border-emerald-100"
                                             )}>
-                                                {student.status || 'Inside'}
+                                                {f.status || 'Inside'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button
-                                                    onClick={() => handleView(student)}
+                                                    onClick={() => handleView(f)}
                                                     className="p-2.5 text-slate-400 hover:text-[#1e3a5f] hover:bg-slate-100 rounded-xl transition-all"
                                                     title="View Profile"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </button>
                                                 <Link
-                                                    href={`/users/students/add?uid=${student.uid}&project=${project}`}
+                                                    href={`/users/admission/add?uid=${f.uid}&project=${project}`}
                                                     className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                                                     title="Edit profile"
                                                 >
                                                     <Edit2 className="w-4 h-4" />
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleDelete(student.uid)}
+                                                    onClick={() => handleDelete(f.uid)}
                                                     className="p-2.5 text-slate-400 hover:text-[#c32026] hover:bg-red-50 rounded-xl transition-all"
                                                     title="Delete record"
                                                 >
@@ -230,21 +188,6 @@ export default function StudentsPage() {
                             )}
                         </tbody>
                     </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Showing {filteredStudents.length} of {students.length} students
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <button className="p-2 text-slate-400 hover:text-[#1e3a5f] hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200">
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-[#1e3a5f] hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200">
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
                 </div>
             </div>
 

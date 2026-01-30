@@ -3,22 +3,22 @@
 import React from 'react';
 import {
     ArrowLeft,
+    Camera,
     User,
     Shield,
     RefreshCw,
     Mail,
     Phone,
     CheckCircle2,
+    UserPlus,
     AlertCircle,
-    Users as UsersIcon,
-    Search,
-    Save,
-    UserPlus
+    Briefcase,
+    Save
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function AddParentPage() {
+export default function AddHigherAuthorityPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
     const project = searchParams.get('project') || '1';
@@ -28,13 +28,15 @@ export default function AddParentPage() {
     const [isSuccess, setIsSuccess] = React.useState(false);
     const [error, setError] = React.useState('');
     const [formData, setFormData] = React.useState({
-        full_name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         password: '',
         phone: '',
-        student_id: '',
-        relation: 'Father',
-        role: 'parent'
+        dept: 'Management',
+        designation: 'Higher Authority',
+        role: 'higher_authority',
+        gender: 'Male'
     });
 
     React.useEffect(() => {
@@ -42,20 +44,23 @@ export default function AddParentPage() {
             const fetchUser = async () => {
                 try {
                     const res = await fetch(`/api/users?uid=${uid}&project=${project}`);
-                    if (!res.ok) throw new Error('Failed to fetch parent data');
+                    if (!res.ok) throw new Error('Failed to fetch authority data');
                     const data = await res.json();
 
+                    const [first, ...last] = (data.full_name || '').split(' ');
                     setFormData({
-                        full_name: data.full_name || '',
+                        ...formData,
+                        first_name: first || '',
+                        last_name: last.join(' ') || '',
                         email: data.email || '',
-                        password: '',
                         phone: data.phone || '',
-                        student_id: data.student_id || '',
-                        relation: data.relation || 'Father',
-                        role: data.role || 'parent'
+                        dept: data.dept || data.department || 'Management',
+                        designation: data.designation || 'Higher Authority',
+                        role: data.role || 'higher_authority',
+                        gender: data.gender || 'Male'
                     });
                 } catch (err: any) {
-                    setError('Error loading parent data');
+                    setError('Error loading authority data');
                 } finally {
                     setIsLoadingUser(false);
                 }
@@ -73,6 +78,7 @@ export default function AddParentPage() {
             const method = uid ? 'PUT' : 'POST';
             const body = {
                 ...formData,
+                full_name: `${formData.first_name} ${formData.last_name}`,
                 project,
                 ...(uid ? { uid } : {})
             };
@@ -91,13 +97,15 @@ export default function AddParentPage() {
             setIsSuccess(true);
             if (!uid) {
                 setFormData({
-                    full_name: '',
+                    first_name: '',
+                    last_name: '',
                     email: '',
                     password: '',
                     phone: '',
-                    student_id: '',
-                    relation: 'Father',
-                    role: 'parent'
+                    dept: 'Management',
+                    designation: 'Higher Authority',
+                    role: 'higher_authority',
+                    gender: 'Male'
                 });
             }
             setTimeout(() => setIsSuccess(false), 5000);
@@ -111,33 +119,35 @@ export default function AddParentPage() {
     if (isLoadingUser) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <RefreshCw className="w-8 h-8 text-[#c32026] animate-spin" />
+                <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 page-transition pb-20">
-            {/* Breadcrumbs & Header */}
+        <div className="max-w-5xl mx-auto space-y-8 page-transition pb-20">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link
-                        href="/users/parents"
-                        className="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
+                        href="/users/higher-authority"
+                        className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
                     >
                         <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        Back to Parents
+                        Back to List
                     </Link>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                        {uid ? 'Edit' : 'Add'} Parent Account
+                        {uid ? 'Edit' : 'Add'} Higher Authority
                     </h2>
-                    <p className="text-slate-500 font-medium">Link a parent to a student for gate pass monitoring.</p>
+                    <p className="text-slate-500 font-medium">
+                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register a new Management/Authority figure.'}
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-[#c32026] hover:bg-[#a61a20] text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
                     >
                         {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : (uid ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />)}
                         <span>{isSubmitting ? 'Processing...' : (uid ? 'Save Changes' : 'Create Account')}</span>
@@ -152,7 +162,7 @@ export default function AddParentPage() {
                     </div>
                     <div>
                         <p className="font-black text-sm uppercase tracking-wider">Success!</p>
-                        <p className="text-sm font-medium opacity-90">Parent record has been {uid ? 'updated' : 'created and linked'} successfully.</p>
+                        <p className="text-sm font-medium opacity-90">Authority record has been {uid ? 'updated' : 'created'} successfully.</p>
                     </div>
                 </div>
             )}
@@ -170,72 +180,63 @@ export default function AddParentPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Module: Personal Information */}
+                {/* Module: Professional Information */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-red-50 text-[#c32026] rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                             <User className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900">Guardian Details</h3>
+                            <h3 className="text-lg font-bold text-slate-900">Professional Profile</h3>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-tighter">Basic identity and contact details</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Full Name <span className="text-red-500">*</span></label>
-                            <input required type="text" placeholder="e.g. Suresh Kumar" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none transition-all font-medium text-slate-900"
-                                value={formData.full_name}
-                                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                            />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 group hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+                            <div className="w-24 h-24 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors relative overflow-hidden">
+                                <Camera className="w-10 h-10" />
+                            </div>
+                            <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600">Upload Photo</p>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Phone Number <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="tel" placeholder="+91 98123 45678" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none transition-all font-medium text-slate-900"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+
+                        <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">First Name <span className="text-red-500">*</span></label>
+                                <input required type="text" placeholder="e.g. John" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                    value={formData.first_name}
+                                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Last Name <span className="text-red-500">*</span></label>
+                                <input required type="text" placeholder="e.g. Doe" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                    value={formData.last_name}
+                                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Phone Number <span className="text-red-500">*</span></label>
+                                <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input required type="tel" placeholder="+91 98765 43210" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender</label>
+                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                    value={formData.gender}
+                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                >
+                                    <option>Male</option>
+                                    <option>Female</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Relation</label>
-                            <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none transition-all font-bold text-slate-700 cursor-pointer"
-                                value={formData.relation}
-                                onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
-                            >
-                                <option>Father</option>
-                                <option>Mother</option>
-                                <option>Legal Guardian</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Module: Student Link */}
-                <div className="dashboard-card p-8">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-                            <UsersIcon className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900">Student Connection</h3>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-tighter">Link this parent to a specific student ID</p>
-                        </div>
-                    </div>
-
-                    <div className="max-w-md space-y-2">
-                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Target Student ID <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input required type="text" placeholder="e.g. CS2023089" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 uppercase"
-                                value={formData.student_id}
-                                onChange={(e) => setFormData({ ...formData, student_id: e.target.value.toUpperCase() })}
-                            />
-                        </div>
-                        <p className="text-[10px] text-slate-400 pl-1">This will enable real-time notifications for the linked student's movements.</p>
                     </div>
                 </div>
 
@@ -253,12 +254,12 @@ export default function AddParentPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Login Email <span className="text-red-500">*</span></label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="parent@example.com"
+                                <input required type="email" placeholder="authority@ctgroup.in"
                                     disabled={!!uid}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 />
@@ -274,7 +275,7 @@ export default function AddParentPage() {
                                     required={!uid}
                                     type="text"
                                     placeholder={uid ? "Leave blank to keep current" : "Minimum 8 characters"}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900"
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 />
@@ -285,15 +286,15 @@ export default function AddParentPage() {
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4">
-                    <Link href="/users/parents" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
+                    <Link href="/users/higher-authority" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
                         Cancel
                     </Link>
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="px-10 py-3 bg-[#c32026] hover:bg-[#a61a20] text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-500/30 transition-all disabled:opacity-50"
+                        className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/30 transition-all disabled:opacity-50"
                     >
-                        {isSubmitting ? 'Processing...' : (uid ? 'Update Profile' : 'Create Account')}
+                        {isSubmitting ? 'Processing...' : (uid ? 'Update Profile' : 'Complete Registration')}
                     </button>
                 </div>
             </form>

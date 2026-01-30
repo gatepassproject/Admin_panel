@@ -1,12 +1,12 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React from 'react';
 import {
     Users,
     Search,
     Plus,
-    Upload,
-    Filter,
     Trash2,
     Heart,
     Mail,
@@ -16,45 +16,29 @@ import {
     Eye,
     Edit2,
     Link2,
-    ExternalLink
+    ExternalLink,
+    Database
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
+import { ViewUserModal } from '@/components/ViewUserModal';
 
 export default function ParentsPage() {
-    const [parents, setParents] = React.useState<any[]>([]);
-    const [isLoading, setIsLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
+    const {
+        users: parents,
+        isLoading,
+        project,
+        setProject,
+        selectedUser,
+        isViewModalOpen,
+        setIsViewModalOpen,
+        handleDelete,
+        handleView
+    } = useUserDashboard('parent');
+
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRelation, setSelectedRelation] = React.useState('All');
-
-    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-    const [newParent, setNewParent] = React.useState({
-        full_name: '',
-        email: '',
-        password: 'ParentPassword123!',
-        student_id: '',
-        relation: 'Father',
-        phone: '',
-        role: 'parent'
-    });
-
-    const fetchParents = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch('/api/users?role=parent');
-            if (!response.ok) throw new Error('Failed to fetch parents');
-            const data = await response.json();
-            setParents(data);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    React.useEffect(() => {
-        fetchParents();
-    }, []);
 
     const filteredParents = parents.filter(p =>
         (p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,25 +46,6 @@ export default function ParentsPage() {
             p.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
         (selectedRelation === 'All' || p.relation === selectedRelation)
     );
-
-    const handleAddParent = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            setIsLoading(true);
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newParent)
-            });
-            if (!response.ok) throw new Error('Failed to register parent');
-            setIsAddModalOpen(false);
-            fetchParents();
-        } catch (err: any) {
-            alert(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     return (
         <div className="space-y-6 page-transition pb-20">
@@ -94,11 +59,24 @@ export default function ParentsPage() {
                     <p className="text-slate-500 font-medium">Manage parent accounts and their links to student profiles.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"
-                        onClick={() => setIsAddModalOpen(true)}>
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                        <Database className="w-4 h-4 text-slate-400" />
+                        <select
+                            className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-700 outline-none cursor-pointer"
+                            value={project}
+                            onChange={(e) => setProject(e.target.value as '1' | '2')}
+                        >
+                            <option value="1">GatePass (DB1)</option>
+                            <option value="2">IoT System (DB2)</option>
+                        </select>
+                    </div>
+                    <Link
+                        href={`/users/parents/add?project=${project}`}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-[#c32026] hover:bg-[#a61a20] text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-500/20 transition-all font-black"
+                    >
                         <Plus className="w-4 h-4" />
                         <span>Register Parent</span>
-                    </button>
+                    </Link>
                 </div>
             </div>
 
@@ -149,7 +127,7 @@ export default function ParentsPage() {
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Relation:</span>
                         <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none"
+                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none cursor-pointer"
                             value={selectedRelation}
                             onChange={(e) => setSelectedRelation(e.target.value)}
                         >
@@ -168,6 +146,7 @@ export default function ParentsPage() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">#</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Guardian Info</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Linked Student</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Details</th>
@@ -176,30 +155,28 @@ export default function ParentsPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                [1, 2, 3].map(i => (
-                                    <tr key={i} className="animate-pulse h-20 bg-slate-50/20"><td colSpan={4}></td></tr>
+                                [1, 2, 3, 4, 5].map(i => (
+                                    <tr key={i} className="animate-pulse h-24 bg-slate-50/20"><td colSpan={5}></td></tr>
                                 ))
                             ) : filteredParents.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-                                                <Heart className="w-8 h-8 text-slate-200" />
-                                            </div>
-                                            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">No guardian records found</p>
-                                        </div>
+                                    <td colSpan={5} className="px-6 py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">
+                                        No guardian records found
                                     </td>
                                 </tr>
                             ) : (
-                                filteredParents.map((p) => (
-                                    <tr key={p.id || p.uid} className="hover:bg-slate-50/50 transition-colors group">
+                                filteredParents.map((p, idx) => (
+                                    <tr key={p.uid} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4 text-center text-xs font-bold text-slate-400">
+                                            {idx + 1}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-red-50 text-[#c32026] rounded-xl flex items-center justify-center font-black text-lg">
+                                                <div className="w-12 h-12 bg-red-50 text-[#c32026] rounded-xl flex items-center justify-center font-black text-lg shadow-inner">
                                                     {p.full_name?.[0]}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-slate-900">{p.full_name}</p>
+                                                    <p className="text-sm font-bold text-slate-900 group-hover:text-[#c32026] transition-colors">{p.full_name}</p>
                                                     <span className="text-[10px] font-black text-red-500 uppercase bg-red-50 px-2 py-0.5 rounded-md mt-1 inline-block">{p.relation || 'Father'}</span>
                                                 </div>
                                             </div>
@@ -221,9 +198,27 @@ export default function ParentsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <button className="p-2.5 text-slate-400 hover:text-[#1e3a5f] transition-all"><Eye className="w-4 h-4" /></button>
-                                                <button className="p-2.5 text-slate-400 hover:text-emerald-600 transition-all"><Edit2 className="w-4 h-4" /></button>
-                                                <button className="p-2.5 text-slate-400 hover:text-[#c32026] transition-all"><Trash2 className="w-4 h-4" /></button>
+                                                <button
+                                                    onClick={() => handleView(p)}
+                                                    className="p-2.5 text-slate-400 hover:text-[#1e3a5f] hover:bg-slate-100 rounded-xl transition-all"
+                                                    title="View Profile"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <Link
+                                                    href={`/users/parents/add?uid=${p.uid}&project=${project}`}
+                                                    className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                    title="Edit Record"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(p.uid)}
+                                                    className="p-2.5 text-slate-400 hover:text-[#c32026] hover:bg-red-50 rounded-xl transition-all"
+                                                    title="Delete record"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -232,91 +227,28 @@ export default function ParentsPage() {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            {/* Registration Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                        <div className="p-8 bg-[#c32026] text-white">
-                            <h3 className="text-xl font-black uppercase tracking-widest">Guardian Enrollment</h3>
-                            <p className="text-red-100 text-[10px] font-bold mt-1 uppercase tracking-widest">Linking Secure Access for Families</p>
-                        </div>
-                        <form onSubmit={handleAddParent} className="p-8 space-y-5">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Guardian Full Name</label>
-                                <input
-                                    required
-                                    type="text"
-                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none font-bold"
-                                    value={newParent.full_name}
-                                    onChange={e => setNewParent({ ...newParent, full_name: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Student Roll ID</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none font-bold"
-                                        value={newParent.student_id}
-                                        onChange={e => setNewParent({ ...newParent, student_id: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Relation</label>
-                                    <select
-                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black text-slate-700"
-                                        value={newParent.relation}
-                                        onChange={e => setNewParent({ ...newParent, relation: e.target.value })}
-                                    >
-                                        <option>Father</option>
-                                        <option>Mother</option>
-                                        <option>Legal Guardian</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Guardian Phone No.</label>
-                                <input
-                                    required
-                                    type="tel"
-                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none font-bold"
-                                    value={newParent.phone}
-                                    onChange={e => setNewParent({ ...newParent, phone: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Account Email</label>
-                                <input
-                                    required
-                                    type="email"
-                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none font-bold"
-                                    value={newParent.email}
-                                    onChange={e => setNewParent({ ...newParent, email: e.target.value })}
-                                />
-                            </div>
-                            <div className="flex items-center gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddModalOpen(false)}
-                                    className="flex-1 py-4 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-2xl border-2 border-slate-100 hover:bg-slate-50 transition-all font-black"
-                                >
-                                    Dismiss
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="flex-2 py-4 bg-[#c32026] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-[#a61a20] transition-all shadow-xl shadow-red-500/20 disabled:opacity-50"
-                                >
-                                    {isLoading ? 'Sending...' : 'Register Account'}
-                                </button>
-                            </div>
-                        </form>
+                {/* Pagination */}
+                <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Total Records: {filteredParents.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button className="p-2 text-slate-400 hover:text-[#1e3a5f] hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 disabled:opacity-50">
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button className="p-2 text-slate-400 hover:text-[#1e3a5f] hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 disabled:opacity-50">
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
-            )}
+            </div>
+
+            <ViewUserModal
+                user={selectedUser}
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+            />
         </div>
     );
 }

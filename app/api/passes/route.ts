@@ -6,21 +6,8 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const student_id = searchParams.get('student_id');
 
-<<<<<<< HEAD
-    if (!db1) {
-        console.warn('Firebase Admin not initialized, returning mock passes');
-        const { mockPasses } = await import('../mockData');
-        let passes = mockPasses;
-        if (status) passes = passes.filter(p => p.status === status);
-        if (student_id) passes = passes.filter(p => p.student_id === student_id);
-        return NextResponse.json(passes);
-    }
-
     try {
-        let query = db1.collection('gate_passes');
-=======
         let query = db2.collection('gate_passes');
->>>>>>> ba475b768eb0ddae6ee98d7d7b1f7f2708033217
 
         if (status) {
             // @ts-ignore

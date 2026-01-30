@@ -37,6 +37,10 @@ const navItems = [
         subItems: [
             { title: 'Students', href: '/users/students' },
             { title: 'Faculty', href: '/users/faculty' },
+            { title: 'HOD', href: '/users/hod' },
+            { title: 'Principal', href: '/users/principal' },
+            { title: 'Admission Cell', href: '/users/admission' },
+            { title: 'Higher Authority', href: '/users/higher-authority' },
             { title: 'Security Staff', href: '/users/security' },
             { title: 'Parents', href: '/users/parents' },
             { title: 'Roles & Permissions', href: '/users/roles' },

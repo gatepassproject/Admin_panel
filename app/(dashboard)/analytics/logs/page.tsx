@@ -18,16 +18,24 @@ import { cn } from '@/lib/utils';
 
 export default function GateLogsPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [logs, setLogs] = React.useState<any[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
 
-    const logs = [
-        { id: 1, user: 'Suresh Raina', role: 'Student', gate: 'Main Gate 01', type: 'Entry', time: '10:24 AM', date: '22 Oct 2025', status: 'Authorized' },
-        { id: 2, user: 'Rahul Kumar', role: 'Student', gate: 'Hostel Gate B', type: 'Exit', time: '09:15 AM', date: '22 Oct 2025', status: 'Authorized' },
-        { id: 3, user: 'Unknown', role: 'Visitor', gate: 'Main Gate 02', type: 'Entry', time: '08:45 AM', date: '22 Oct 2025', status: 'Denied' },
-        { id: 4, user: 'Dr. Neha Singh', role: 'Faculty', gate: 'Main Gate 01', type: 'Entry', time: '08:30 AM', date: '22 Oct 2025', status: 'Authorized' },
-        { id: 5, user: 'Priya Sharma', role: 'Student', gate: 'Hostel Gate B', type: 'Entry', time: '08:12 AM', date: '22 Oct 2025', status: 'Authorized' },
-        { id: 6, user: 'Amit Patel', role: 'Staff', gate: 'Back Entrance', type: 'Exit', time: '07:45 AM', date: '22 Oct 2025', status: 'Authorized' },
-        { id: 7, user: 'Ishaan Verma', role: 'Student', gate: 'Main Gate 01', type: 'Exit', time: '07:30 AM', date: '22 Oct 2025', status: 'Authorized' },
-    ];
+    React.useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const res = await fetch('/api/logs?limit=100');
+                if (!res.ok) throw new Error('Failed to fetch logs');
+                const json = await res.json();
+                setLogs(json.logs);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchLogs();
+    }, []);
 
     const filteredLogs = logs.filter(log =>
         log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -147,7 +155,7 @@ export default function GateLogsPage() {
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showing {filteredLogs.length} of 1,248 Master Entries</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Showing {filteredLogs.length} recent entries</p>
                     <div className="flex gap-2">
                         <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 disabled:opacity-50" disabled>Prev</button>
                         <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] hover:border-[#1e3a5f] transition-all">Next</button>

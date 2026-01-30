@@ -401,27 +401,36 @@ export default function DashboardPage() {
                         <div className="absolute left-6 top-0 bottom-0 w-px bg-slate-100" />
 
                         <div className="space-y-8">
-                            {recentActivity.map((activity) => (
-                                <div key={activity.id} className="relative flex items-start gap-4">
-                                    <div className={cn(
-                                        "w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-4 border-white shadow-sm transition-transform hover:scale-110",
-                                        activity.type === 'success' && "bg-emerald-50 text-emerald-600",
-                                        activity.type === 'pending' && "bg-blue-50 text-blue-600",
-                                        activity.type === 'error' && "bg-red-50 text-red-600",
-                                        activity.type === 'warning' && "bg-orange-50 text-orange-600"
-                                    )}>
-                                        <activity.icon className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0 pt-1">
-                                        <p className="text-sm font-bold text-slate-900 truncate">{activity.user}</p>
-                                        <p className="text-xs text-slate-500 mt-1">{activity.action} at <span className="font-semibold text-slate-700">{activity.gate}</span></p>
-                                        <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                            <Clock className="w-3 h-3" />
-                                            {activity.time}
+                            {statsData?.recentActivity?.length > 0 ? (
+                                statsData.recentActivity.map((activity: any) => (
+                                    <div key={activity.id} className="relative flex items-start gap-4">
+                                        <div className={cn(
+                                            "w-12 h-12 rounded-full flex items-center justify-center relative z-10 border-4 border-white shadow-sm transition-transform hover:scale-110",
+                                            (activity.status === 'Approved' || activity.status === 'Exit') ? "bg-emerald-50 text-emerald-600" :
+                                                activity.status === 'Pending' ? "bg-blue-50 text-blue-600" :
+                                                    activity.status === 'Rejected' ? "bg-red-50 text-red-600" :
+                                                        "bg-orange-50 text-orange-600"
+                                        )}>
+                                            {activity.status === 'Approved' ? <CheckCircle2 className="w-5 h-5" /> :
+                                                activity.status === 'Pending' ? <Clock className="w-5 h-5" /> :
+                                                    activity.status === 'Rejected' ? <XCircle className="w-5 h-5" /> :
+                                                        <AlertTriangle className="w-5 h-5" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0 pt-1">
+                                            <p className="text-sm font-bold text-slate-900 truncate">{activity.user}</p>
+                                            <p className="text-xs text-slate-500 mt-1">{activity.action} at <span className="font-semibold text-slate-700">{activity.gate}</span></p>
+                                            <div className="flex items-center gap-1.5 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                <Clock className="w-3 h-3" />
+                                                {new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
                                         </div>
                                     </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10">
+                                    <p className="text-slate-400 text-sm font-medium">No recent activity found.</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </div>
@@ -446,7 +455,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weeklyStatsData}>
+                            <BarChart data={statsData?.weeklyStats || weeklyStatsData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                 <XAxis
                                     dataKey="day"

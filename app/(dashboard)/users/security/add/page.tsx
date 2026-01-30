@@ -12,12 +12,20 @@ import {
     AlertCircle,
     UserCircle,
     MapPin,
-    Clock
+    Clock,
+    Save,
+    UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export default function AddSecurityPage() {
+    const searchParams = useSearchParams();
+    const uid = searchParams.get('uid');
+    const project = searchParams.get('project') || '1';
+
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isLoadingUser, setIsLoadingUser] = React.useState(!!uid);
     const [isSuccess, setIsSuccess] = React.useState(false);
     const [error, setError] = React.useState('');
     const [formData, setFormData] = React.useState({
@@ -27,8 +35,37 @@ export default function AddSecurityPage() {
         phone: '',
         gate: 'Main Gate',
         shift: 'Morning',
+        badge_id: '',
         role: 'security'
     });
+
+    React.useEffect(() => {
+        if (uid) {
+            const fetchUser = async () => {
+                try {
+                    const res = await fetch(`/api/users?uid=${uid}&project=${project}`);
+                    if (!res.ok) throw new Error('Failed to fetch security data');
+                    const data = await res.json();
+
+                    setFormData({
+                        full_name: data.full_name || '',
+                        email: data.email || '',
+                        password: '',
+                        phone: data.phone || '',
+                        gate: data.gate || 'Main Gate',
+                        shift: data.shift || 'Morning',
+                        badge_id: data.badge_id || '',
+                        role: data.role || 'security'
+                    });
+                } catch (err: any) {
+                    setError('Error loading security data');
+                } finally {
+                    setIsLoadingUser(false);
+                }
+            };
+            fetchUser();
+        }
+    }, [uid, project]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,27 +73,37 @@ export default function AddSecurityPage() {
         setError('');
 
         try {
+            const method = uid ? 'PUT' : 'POST';
+            const body = {
+                ...formData,
+                project,
+                ...(uid ? { uid } : {})
+            };
+
             const response = await fetch('/api/users', {
-                method: 'POST',
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to create security account');
+                throw new Error(data.error || 'Operation failed');
             }
 
             setIsSuccess(true);
-            setFormData({
-                full_name: '',
-                email: '',
-                password: '',
-                phone: '',
-                gate: 'Main Gate',
-                shift: 'Morning',
-                role: 'security'
-            });
+            if (!uid) {
+                setFormData({
+                    full_name: '',
+                    email: '',
+                    password: '',
+                    phone: '',
+                    gate: 'Main Gate',
+                    shift: 'Morning',
+                    badge_id: '',
+                    role: 'security'
+                });
+            }
             setTimeout(() => setIsSuccess(false), 5000);
         } catch (err: any) {
             setError(err.message);
@@ -65,29 +112,39 @@ export default function AddSecurityPage() {
         }
     };
 
+    if (isLoadingUser) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <RefreshCw className="w-8 h-8 text-slate-900 animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto space-y-8 page-transition pb-20">
             {/* Breadcrumbs & Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link
-                        href="/users"
-                        className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
+                        href="/users/security"
+                        className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
                     >
                         <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        Back to Users
+                        Back to Security
                     </Link>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Add Security Personnel</h2>
-                    <p className="text-slate-500 font-medium">Register a new security officer for gate management.</p>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+                        {uid ? 'Edit' : 'Add'} Security Personnel
+                    </h2>
+                    <p className="text-slate-500 font-medium">Record and manage security staff assignments.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg transition-all disabled:opacity-50"
                     >
-                        {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                        <span>{isSubmitting ? 'Registering...' : 'Register Officer'}</span>
+                        {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : (uid ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />)}
+                        <span>{isSubmitting ? 'Processing...' : (uid ? 'Save Changes' : 'Register Officer')}</span>
                     </button>
                 </div>
             </div>
@@ -99,7 +156,7 @@ export default function AddSecurityPage() {
                     </div>
                     <div>
                         <p className="font-black text-sm uppercase tracking-wider">Success!</p>
-                        <p className="text-sm font-medium opacity-90">Security officer has been registered successfully.</p>
+                        <p className="text-sm font-medium opacity-90">Security officer has been {uid ? 'updated' : 'registered'} successfully.</p>
                     </div>
                 </div>
             )}
@@ -110,14 +167,13 @@ export default function AddSecurityPage() {
                         <AlertCircle className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="font-black text-sm uppercase tracking-wider">Registration Failed</p>
+                        <p className="font-black text-sm uppercase tracking-wider">Operation Failed</p>
                         <p className="text-sm font-medium opacity-90">{error}</p>
                     </div>
                 </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Module: Personal Information */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-slate-100 text-slate-900 rounded-xl flex items-center justify-center">
@@ -138,6 +194,13 @@ export default function AddSecurityPage() {
                             />
                         </div>
                         <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Badge ID</label>
+                            <input type="text" placeholder="e.g. SEC-001" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900 uppercase"
+                                value={formData.badge_id}
+                                onChange={(e) => setFormData({ ...formData, badge_id: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Phone Number <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -150,7 +213,6 @@ export default function AddSecurityPage() {
                     </div>
                 </div>
 
-                {/* Module: Login Credentials */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
@@ -167,17 +229,25 @@ export default function AddSecurityPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Login Email <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="ram.singh@security.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900"
+                                <input required type="email" placeholder="ram.singh@security.in"
+                                    disabled={!!uid}
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Login Password <span className="text-red-500">*</span></label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">
+                                Login Password {uid ? '(Optional)' : <span className="text-red-500">*</span>}
+                            </label>
                             <div className="relative">
                                 <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="text" placeholder="Minimum 8 characters" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900"
+                                <input
+                                    required={!uid}
+                                    type="text"
+                                    placeholder={uid ? "Leave blank to keep current" : "Minimum 8 characters"}
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 />
@@ -186,7 +256,6 @@ export default function AddSecurityPage() {
                     </div>
                 </div>
 
-                {/* Module: Gate & Shift Assignment */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
@@ -203,7 +272,7 @@ export default function AddSecurityPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Assigned Gate <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <select required className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                                <select required className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
                                     value={formData.gate}
                                     onChange={(e) => setFormData({ ...formData, gate: e.target.value })}
                                 >
@@ -219,30 +288,29 @@ export default function AddSecurityPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Shift Type <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <select required className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                                <select required className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
                                     value={formData.shift}
                                     onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
                                 >
-                                    <option>Morning (6 AM - 2 PM)</option>
-                                    <option>Evening (2 PM - 10 PM)</option>
-                                    <option>Night (10 PM - 6 AM)</option>
+                                    <option value="Morning">Morning (6 AM - 2 PM)</option>
+                                    <option value="Evening">Evening (2 PM - 10 PM)</option>
+                                    <option value="Night">Night (10 PM - 6 AM)</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4">
-                    <button type="button" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
+                    <Link href="/users/security" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
                         Cancel
-                    </button>
+                    </Link>
                     <button
                         type="submit"
                         disabled={isSubmitting}
                         className="px-10 py-3 bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl transition-all disabled:opacity-50"
                     >
-                        {isSubmitting ? 'Registering...' : 'Register Officer'}
+                        {isSubmitting ? 'Registering...' : (uid ? 'Update Profile' : 'Register Officer')}
                     </button>
                 </div>
             </form>

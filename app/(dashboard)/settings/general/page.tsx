@@ -21,12 +21,64 @@ import { cn } from '@/lib/utils';
 
 export default function GeneralSettingsPage() {
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [settings, setSettings] = React.useState({
+        institutionName: 'CT Group of Institutions',
+        shortName: 'CT GROUP',
+        campusCategory: 'University Campus',
+        openTime: '06:00',
+        closeTime: '23:00',
+        weekendOpenTime: '08:00',
+        weekendCloseTime: '21:00',
+        adminEmail: 'admin@ctgroup.in',
+        helpline: '+91 181 5055127',
+        address: 'CT Group of Institutions, Shahpur, Near Lambra, Nakodar Road, Jalandhar, Punjab 144020'
+    });
 
-    const handleSave = (e: React.FormEvent) => {
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.general) setSettings(data.general);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleChange = (key: string, value: string) => {
+        setSettings(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        setTimeout(() => setIsSaving(false), 1500);
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section: 'general', data: settings })
+            });
+            if (res.ok) {
+                alert('General settings saved successfully.');
+            } else {
+                alert('Failed to save settings.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred.');
+        } finally {
+            setIsSaving(false);
+        }
     };
+
+    if (isLoading) return <div className="p-10 text-center">Loading settings...</div>;
 
     return (
         <div className="max-w-4xl space-y-8 page-transition pb-20">
@@ -73,16 +125,30 @@ export default function GeneralSettingsPage() {
                         <div className="md:col-span-2 space-y-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Official Institution Name</label>
-                                <input type="text" defaultValue="CT Group of Institutions" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900" />
+                                <input
+                                    type="text"
+                                    value={settings.institutionName}
+                                    onChange={(e) => handleChange('institutionName', e.target.value)}
+                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900"
+                                />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Short Name / Code</label>
-                                    <input type="text" defaultValue="CT GROUP" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900" />
+                                    <input
+                                        type="text"
+                                        value={settings.shortName}
+                                        onChange={(e) => handleChange('shortName', e.target.value)}
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campus Category</label>
-                                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-black text-slate-700">
+                                    <select
+                                        value={settings.campusCategory}
+                                        onChange={(e) => handleChange('campusCategory', e.target.value)}
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-black text-slate-700"
+                                    >
                                         <option>University Campus</option>
                                         <option>Technical Institute</option>
                                         <option>Administrative Center</option>
@@ -108,8 +174,18 @@ export default function GeneralSettingsPage() {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Standard Gate Hours</label>
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 grid grid-cols-2 gap-3">
-                                        <input type="time" defaultValue="06:00" className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700" />
-                                        <input type="time" defaultValue="23:00" className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700" />
+                                        <input
+                                            type="time"
+                                            value={settings.openTime}
+                                            onChange={(e) => handleChange('openTime', e.target.value)}
+                                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700"
+                                        />
+                                        <input
+                                            type="time"
+                                            value={settings.closeTime}
+                                            onChange={(e) => handleChange('closeTime', e.target.value)}
+                                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700"
+                                        />
                                     </div>
                                     <div className="flex items-center px-4 py-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl">
                                         <span className="text-[10px] font-black uppercase">Active</span>
@@ -120,8 +196,18 @@ export default function GeneralSettingsPage() {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Weekend Lockdown</label>
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 grid grid-cols-2 gap-3">
-                                        <input type="time" defaultValue="08:00" className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700" />
-                                        <input type="time" defaultValue="21:00" className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700" />
+                                        <input
+                                            type="time"
+                                            value={settings.weekendOpenTime}
+                                            onChange={(e) => handleChange('weekendOpenTime', e.target.value)}
+                                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700"
+                                        />
+                                        <input
+                                            type="time"
+                                            value={settings.weekendCloseTime}
+                                            onChange={(e) => handleChange('weekendCloseTime', e.target.value)}
+                                            className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-700"
+                                        />
                                     </div>
                                     <div className="flex items-center px-4 py-3 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl">
                                         <span className="text-[10px] font-black uppercase">Restricted</span>
@@ -151,15 +237,30 @@ export default function GeneralSettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Admin Support Email</label>
-                            <input type="email" defaultValue="admin@ctgroup.in" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900" />
+                            <input
+                                type="email"
+                                value={settings.adminEmail}
+                                onChange={(e) => handleChange('adminEmail', e.target.value)}
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900"
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Emergency 24/7 Helpline</label>
-                            <input type="tel" defaultValue="+91 181 5055127" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900" />
+                            <input
+                                type="tel"
+                                value={settings.helpline}
+                                onChange={(e) => handleChange('helpline', e.target.value)}
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900"
+                            />
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Campus Hub Address</label>
-                            <textarea rows={3} defaultValue="CT Group of Institutions, Shahpur, Near Lambra, Nakodar Road, Jalandhar, Punjab 144020" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900 resize-none"></textarea>
+                            <textarea
+                                rows={3}
+                                value={settings.address}
+                                onChange={(e) => handleChange('address', e.target.value)}
+                                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-900 resize-none"
+                            ></textarea>
                         </div>
                     </div>
                 </div>

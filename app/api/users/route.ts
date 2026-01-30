@@ -1,22 +1,31 @@
 import { NextResponse } from 'next/server';
-import { db2, auth2 } from '@/lib/firebase-admin';
+import { db1, auth1, db2, auth2 } from '@/lib/firebase-admin';
+
+function getFirebaseInstances(project: string | null) {
+    if (project === '1') {
+        return { db: db1, auth: auth1 };
+    }
+    return { db: db2, auth: auth2 };
+}
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
+    const project = searchParams.get('project'); // '1' for gatepass, '2' or null for iot
+    const uid = searchParams.get('uid');
 
-<<<<<<< HEAD
-    if (!db1) {
-        console.warn('Firebase Admin not initialized, returning mock users');
-        const { getMockUsers } = await import('../mockData');
-        return NextResponse.json(getMockUsers(role));
-    }
+    const { db } = getFirebaseInstances(project);
 
     try {
-        let usersQuery = db1.collection('users');
-=======
-        let usersQuery = db2.collection('users');
->>>>>>> ba475b768eb0ddae6ee98d7d7b1f7f2708033217
+        if (uid) {
+            const doc = await db.collection('users').doc(uid).get();
+            if (!doc.exists) {
+                return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            }
+            return NextResponse.json({ id: doc.id, ...doc.data() });
+        }
+
+        let usersQuery = db.collection('users');
 
         if (role) {
             const roles = role.split(',');
@@ -30,35 +39,46 @@ export async function GET(request: Request) {
         }
 
         const snapshot = await usersQuery.get();
-        const users = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        const users = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                uid: doc.id, // Ensure uid is always present as components rely on it
+                ...data
+            };
+        });
 
         return NextResponse.json(users);
     } catch (error: any) {
         console.error('Error fetching users:', error);
-        const { getMockUsers } = await import('../mockData');
-        return NextResponse.json(getMockUsers(role));
+        // Fallback to mock data if DB fails or role is missing
+        try {
+            const { getMockUsers } = await import('../mockData');
+            return NextResponse.json(getMockUsers(role));
+        } catch (mockError) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
     }
 }
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+        const { project, ...userDataRaw } = body;
+        const { db, auth } = getFirebaseInstances(project);
 
-        if (!auth1 || !db1) {
+        if (!auth || !db) {
             console.warn('Firebase Admin not initialized, returning mock success for create user');
             return NextResponse.json({ success: true, uid: `mock_${Date.now()}` });
         }
 
-        const { email, password, full_name, role, ...rest } = body;
+        const { email, password, full_name, role, ...rest } = userDataRaw;
 
         if (!full_name || !role) {
             return NextResponse.json({ error: 'Full name and role are required' }, { status: 400 });
         }
 
-        // Smart format email if only ID is provided (for students/faculty/staff)
+        // Smart format email if only ID is provided
         let finalEmail = email;
         const officialRoles = ['student', 'faculty', 'hod', 'principal', 'admission', 'higher_authority', 'security'];
 
@@ -77,20 +97,20 @@ export async function POST(request: Request) {
             }
         }
 
-        // 1. Create user in Firebase Auth (Project 2)
-        const userRecord = await auth2.createUser({
+        // 1. Create user in Firebase Auth
+        const userRecord = await auth.createUser({
             email: finalEmail,
             password: password || 'Password123!',
             displayName: full_name,
         });
 
-        // 2. Prepare structured user document for Firestore (Project 2)
+        // 2. Prepare structured user document for Firestore
         const userData: any = {
             uid: userRecord.uid,
             email: finalEmail,
             full_name,
             role,
-            status: 'Inside', // Default status
+            status: 'Inside',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
@@ -113,13 +133,13 @@ export async function POST(request: Request) {
             userData.shift = rest.shift || 'Morning';
         } else if (role === 'parent') {
             userData.phone = rest.phone;
-            userData.student_id = rest.student_id; // Linked student
+            userData.student_id = rest.student_id;
         }
 
-        // Merge remaining fields for flexibility
+        // Merge remaining fields
         Object.assign(userData, rest);
 
-        await db2.collection('users').doc(userRecord.uid).set(userData);
+        await db.collection('users').doc(userRecord.uid).set(userData);
 
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
     } catch (error: any) {
@@ -127,3 +147,69 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function PUT(request: Request) {
+    try {
+        const body = await request.json();
+        const { uid, project, ...updates } = body;
+        const { db, auth } = getFirebaseInstances(project);
+
+        if (!uid) {
+            return NextResponse.json({ error: 'User UID is required' }, { status: 400 });
+        }
+
+        if (!auth || !db) {
+            return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
+        }
+
+        // 1. Update Authentication Profile
+        if (updates.full_name || updates.password || updates.email) {
+            const authUpdates: any = {};
+            if (updates.full_name) authUpdates.displayName = updates.full_name;
+            if (updates.password) authUpdates.password = updates.password;
+            if (updates.email) authUpdates.email = updates.email;
+
+            await auth.updateUser(uid, authUpdates);
+        }
+
+        // 2. Update Firestore Document
+        const { password, ...firestoreUpdates } = updates;
+        firestoreUpdates.updated_at = new Date().toISOString();
+
+        await db.collection('users').doc(uid).update(firestoreUpdates);
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error('Error updating user:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const uid = searchParams.get('uid');
+        const project = searchParams.get('project');
+        const { db, auth } = getFirebaseInstances(project);
+
+        if (!uid) {
+            return NextResponse.json({ error: 'User UID is required' }, { status: 400 });
+        }
+
+        if (!auth || !db) {
+            return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
+        }
+
+        // 1. Delete from Authentication
+        await auth.deleteUser(uid);
+
+        // 2. Delete from Firestore
+        await db.collection('users').doc(uid).delete();
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error('Error deleting user:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+

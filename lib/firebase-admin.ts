@@ -1,40 +1,44 @@
 import admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  // Main gatepass system (Project 1)
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID_1,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL_1,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY_1?.replace(/\\n/g, '\n'),
-      }),
-      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_1}.firebaseio.com`
-    }, 'gatepass');
-    console.log('Firebase Admin: Project 1 (GatePass) initialized');
-  } catch (error) {
-    console.error('Firebase Admin: Project 1 initialization error', error);
-  }
+// Helper to get or initialize a named Firebase app
+function getApp(name: string, config: any) {
+  const existingApp = admin.apps.find(app => app?.name === name);
+  if (existingApp) return existingApp;
 
-  // IoT system (Project 2)
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID_2,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL_2,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY_2?.replace(/\\n/g, '\n'),
-      }),
-      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_2}.firebaseio.com`
-    }, 'iot');
-    console.log('Firebase Admin: Project 2 (IoT) initialized');
+    const app = admin.initializeApp(config, name);
+    console.log(`Firebase Admin: App "${name}" initialized successfully`);
+    return app;
   } catch (error) {
-    console.error('Firebase Admin: Project 2 initialization error', error);
+    console.error(`Firebase Admin: Critical error initializing app "${name}":`, error);
+    return null;
   }
 }
 
-export const db1 = admin.firestore(admin.app('gatepass'));
-export const db2 = admin.firestore(admin.app('iot'));
-export const auth1 = admin.auth(admin.app('gatepass'));
-export const auth2 = admin.auth(admin.app('iot'));
+const gatepassConfig = {
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID_1,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL_1,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY_1?.replace(/\\n/g, '\n'),
+  }),
+  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_1}.firebaseio.com`
+};
+
+const iotConfig = {
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID_2,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL_2,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY_2?.replace(/\\n/g, '\n'),
+  }),
+  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_2}.firebaseio.com`
+};
+
+const gatepassApp = getApp('gatepass', gatepassConfig);
+const iotApp = getApp('iot', iotConfig);
+
+export const db1 = gatepassApp ? admin.firestore(gatepassApp) : null;
+export const db2 = iotApp ? admin.firestore(iotApp) : null;
+export const auth1 = gatepassApp ? admin.auth(gatepassApp) : null;
+export const auth2 = iotApp ? admin.auth(iotApp) : null;
 
 export { admin };

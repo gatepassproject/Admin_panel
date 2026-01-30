@@ -22,14 +22,30 @@ export default function SystemLogsPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [filter, setFilter] = React.useState('All');
 
-    const logs = [
-        { id: 1, type: 'Info', source: 'AuthEngine', message: 'User CT2021042 successfully authenticated via MFA.', time: 'Just Now' },
-        { id: 2, type: 'Warning', source: 'Hardware', message: 'Gate 03 latency exceeded 200ms threshold.', time: '5 mins ago' },
-        { id: 3, type: 'Error', source: 'Firebase', message: 'Quota exceeded for Cloud Messaging (FCM) downstream.', time: '12 mins ago' },
-        { id: 4, type: 'Critical', source: 'Security', message: 'Multiple brute-force attempts detected from IP 192.168.1.45', time: '22 mins ago' },
-        { id: 5, type: 'Info', source: 'Database', message: 'Scheduled backup of "Students" collection completed.', time: '45 mins ago' },
-        { id: 6, type: 'Info', source: 'API', message: 'Policy update broadcasted to all edge devices.', time: '1 hour ago' },
-    ];
+    const [logs, setLogs] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const res = await fetch('/api/utilities/logs');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.logs && data.logs.length > 0) {
+                        setLogs(data.logs);
+                    } else {
+                        // Fallback/Demo data if no logs exist yet
+                        setLogs([
+                            { id: 1, type: 'Info', source: 'AuthEngine', message: 'User CT2021042 successfully authenticated via MFA.', time: 'Just Now' },
+                            { id: 2, type: 'Warning', source: 'Hardware', message: 'Gate 03 latency exceeded 200ms threshold.', time: '5 mins ago' },
+                        ]);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        fetchLogs();
+    }, []);
 
     return (
         <div className="space-y-6 page-transition pb-20">

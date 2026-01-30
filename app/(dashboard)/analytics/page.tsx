@@ -29,34 +29,40 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
-const trafficData = [
-    { name: 'Mon', entries: 450, exits: 380 },
-    { name: 'Tue', entries: 520, exits: 490 },
-    { name: 'Wed', entries: 610, exits: 580 },
-    { name: 'Thu', entries: 590, exits: 540 },
-    { name: 'Fri', entries: 720, exits: 680 },
-    { name: 'Sat', entries: 310, exits: 290 },
-    { name: 'Sun', entries: 240, exits: 210 },
-];
-
-const peakHoursData = [
-    { hour: '08:00', load: 85 },
-    { hour: '10:00', load: 45 },
-    { hour: '12:00', load: 65 },
-    { hour: '14:00', load: 95 },
-    { hour: '16:00', load: 75 },
-    { hour: '18:00', load: 80 },
-    { hour: '20:00', load: 40 },
-];
-
-const passTypeData = [
-    { name: 'Local Outing', value: 65, color: '#1e3a5f' },
-    { name: 'Night Stay', value: 20, color: '#c32026' },
-    { name: 'Emergency', value: 10, color: '#fec20f' },
-    { name: 'Official', value: 5, color: '#64748b' },
-];
-
 export default function AnalyticsOverviewPage() {
+    const [data, setData] = React.useState<any>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                const res = await fetch('/api/analytics');
+                if (!res.ok) throw new Error('Failed to fetch analytics');
+                const json = await res.json();
+                setData(json);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchAnalytics();
+    }, []);
+
+    const trafficData = data?.trafficData || [
+        { name: 'Mon', entries: 0, exits: 0 },
+        { name: 'Tue', entries: 0, exits: 0 },
+        { name: 'Wed', entries: 0, exits: 0 },
+        { name: 'Thu', entries: 0, exits: 0 },
+        { name: 'Fri', entries: 0, exits: 0 },
+        { name: 'Sat', entries: 0, exits: 0 },
+        { name: 'Sun', entries: 0, exits: 0 },
+    ];
+
+    const peakHoursData = data?.peakHoursData || [];
+    const passTypeData = data?.passTypeData || [];
+    const metrics = data?.metrics || { totalVisits: 0, uniqueVisitors: 0 };
+
     return (
         <div className="space-y-8 page-transition pb-20">
             {/* Header */}
@@ -71,7 +77,7 @@ export default function AnalyticsOverviewPage() {
                 <div className="flex items-center gap-3">
                     <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm">
                         <Calendar className="w-4 h-4" />
-                        <span>Last 7 Days</span>
+                        <span>Last 30 Days</span>
                     </button>
                     <button className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all">
                         <Download className="w-4 h-4" />
@@ -83,10 +89,10 @@ export default function AnalyticsOverviewPage() {
             {/* Top Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Total Mobility', value: '12,482', trend: '+14%', up: true, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Unique Visitors', value: '4,102', trend: '+8%', up: true, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                    { label: 'Total Mobility', value: metrics.totalVisits?.toLocaleString() || '0', trend: '+14%', up: true, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Unique Visitors', value: metrics.uniqueVisitors?.toLocaleString() || '0', trend: '+8%', up: true, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Gate Violations', value: '12', trend: '-24%', up: false, icon: DoorOpen, color: 'text-[#c32026]', bg: 'bg-red-50' },
-                    { label: 'Avg Stay Time', value: '4.5h', trend: '+2%', up: true, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { label: 'Avg Stay Time', value: metrics.avgStayTime || '4.5h', trend: '+2%', up: true, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
                 ].map((stat, idx) => (
                     <div key={idx} className="dashboard-card p-6 group hover:translate-y-[-4px] transition-all duration-300">
                         <div className="flex items-start justify-between">
@@ -167,7 +173,7 @@ export default function AnalyticsOverviewPage() {
                                     paddingAngle={8}
                                     dataKey="value"
                                 >
-                                    {passTypeData.map((entry, index) => (
+                                    {passTypeData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
@@ -176,7 +182,7 @@ export default function AnalyticsOverviewPage() {
                         </ResponsiveContainer>
                     </div>
                     <div className="space-y-3 mt-4">
-                        {passTypeData.map((item, idx) => (
+                        {passTypeData.map((item: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
@@ -200,7 +206,7 @@ export default function AnalyticsOverviewPage() {
                                 <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
                                 <YAxis hide />
                                 <Bar dataKey="load" radius={[6, 6, 0, 0]} barSize={24}>
-                                    {peakHoursData.map((entry, index) => (
+                                    {peakHoursData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.load > 80 ? '#c32026' : '#1e3a5f'} fillOpacity={0.8} />
                                     ))}
                                 </Bar>
