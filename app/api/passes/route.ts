@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db1 } from '@/lib/firebase-admin';
+import { db2 } from '@/lib/firebase-admin';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const student_id = searchParams.get('student_id');
 
+<<<<<<< HEAD
     if (!db1) {
         console.warn('Firebase Admin not initialized, returning mock passes');
         const { mockPasses } = await import('../mockData');
@@ -17,6 +18,9 @@ export async function GET(request: Request) {
 
     try {
         let query = db1.collection('gate_passes');
+=======
+        let query = db2.collection('gate_passes');
+>>>>>>> ba475b768eb0ddae6ee98d7d7b1f7f2708033217
 
         if (status) {
             // @ts-ignore
@@ -48,7 +52,7 @@ export async function PATCH(request: Request) {
 
         if (!id) throw new Error('Pass ID is required');
 
-        await db1.collection('gate_passes').doc(id).update({
+        await db2.collection('gate_passes').doc(id).update({
             status,
             remarks,
             updated_at: new Date().toISOString()

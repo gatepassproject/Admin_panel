@@ -2,6 +2,10 @@ import React from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
+
 export default function DashboardLayout({
     children,
 }: {

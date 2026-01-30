@@ -11,15 +11,15 @@ export async function GET() {
 
     try {
         // 1. Get Student Count
-        const studentsSnapshot = await db1.collection('users').where('role', '==', 'student').get();
+        const studentsSnapshot = await db2.collection('users').where('role', '==', 'student').get();
         const studentsCount = studentsSnapshot.size;
 
         // 2. Get Faculty Count
-        const facultySnapshot = await db1.collection('users').where('role', 'in', ['faculty', 'hod']).get();
+        const facultySnapshot = await db2.collection('users').where('role', 'in', ['faculty', 'hod', 'principal']).get();
         const facultyCount = facultySnapshot.size;
 
         // 3. Get Active Passes (Approved)
-        const activePassesSnapshot = await db1.collection('gate_passes').where('status', '==', 'Approved').get();
+        const activePassesSnapshot = await db2.collection('gate_passes').where('status', '==', 'Approved').get();
         const activePassesCount = activePassesSnapshot.size;
 
         // 4. Get Active Gates (From IoT System)
@@ -36,9 +36,14 @@ export async function GET() {
             timestamp: new Date().toISOString()
         });
     } catch (error: any) {
+<<<<<<< HEAD
         console.error('Error fetching stats:', error);
         // Fallback to mock data on error too
         const { mockStats } = await import('../mockData');
         return NextResponse.json(mockStats);
+=======
+        console.error('API Error /api/stats:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+>>>>>>> ba475b768eb0ddae6ee98d7d7b1f7f2708033217
     }
 }
