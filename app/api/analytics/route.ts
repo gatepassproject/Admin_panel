@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db2 } from '@/lib/firebase-admin';
+import { db1 } from '@/lib/firebase-admin';
 
 export async function GET() {
-    if (!db2) {
+    if (!db1) {
         return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });
     }
 
@@ -11,7 +11,7 @@ export async function GET() {
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
         // Fetch logs/passes for the last 30 days
-        const snapshot = await db2.collection('gate_passes')
+        const snapshot = await db1.collection('gate_passes')
             .where('created_at', '>=', thirtyDaysAgo.toISOString())
             .get();
 

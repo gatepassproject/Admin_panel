@@ -20,7 +20,7 @@ import { useSearchParams } from 'next/navigation';
 export default function AddAdminPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
-    const project = searchParams.get('project') || '2';
+    const project = searchParams.get('project') || '1';
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isLoadingUser, setIsLoadingUser] = React.useState(!!uid);

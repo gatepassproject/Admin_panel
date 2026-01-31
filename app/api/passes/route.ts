@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
-import { db2 } from '@/lib/firebase-admin';
+import { db1 } from '@/lib/firebase-admin';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const student_id = searchParams.get('student_id');
 
+    if (!db1) {
+        const { mockPasses } = await import('../mockData');
+        return NextResponse.json(mockPasses);
+    }
+
     try {
-        let query = db2.collection('gate_passes');
+        let query = db1.collection('gate_passes');
 
         if (status) {
             // @ts-ignore
@@ -34,12 +39,14 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+    if (!db1) return NextResponse.json({ success: true }); // Mock success if no DB
+
     try {
         const { id, status, remarks } = await request.json();
 
         if (!id) throw new Error('Pass ID is required');
 
-        await db2.collection('gate_passes').doc(id).update({
+        await db1.collection('gate_passes').doc(id).update({
             status,
             remarks,
             updated_at: new Date().toISOString()

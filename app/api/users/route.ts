@@ -5,10 +5,16 @@ const PROJECT_GATEPASS = '1';
 const PROJECT_IOT = '2';
 
 function getFirebaseInstances(project: string | null) {
-    if (project === PROJECT_GATEPASS) {
-        return { db: db1, auth: auth1 };
+    if (project === PROJECT_IOT) {
+        return { db: db2, auth: auth2 };
     }
-    return { db: db2, auth: auth2 };
+    return { db: db1, auth: auth1 };
+}
+
+function getCollectionName(project: string | null) {
+    if (project === PROJECT_IOT) return 'web_admins';
+    // Default to 'users' for Project 1 (Mobile App) or generic access
+    return 'users';
 }
 
 const ROLE_HIERARCHY: Record<string, string[]> = {
@@ -47,7 +53,8 @@ export async function GET(request: Request) {
         const requesterRole = getRequesterRole(request);
 
         if (uid) {
-            const doc = await db.collection('users').doc(uid).get();
+            const collectionName = getCollectionName(project);
+            const doc = await db.collection(collectionName).doc(uid).get();
             if (!doc.exists) {
                 return NextResponse.json({ error: 'User not found' }, { status: 404 });
             }
@@ -58,7 +65,8 @@ export async function GET(request: Request) {
             return NextResponse.json({ id: doc.id, ...userData });
         }
 
-        let usersQuery = db.collection('users');
+        const collectionName = getCollectionName(project);
+        let usersQuery: any = db.collection(collectionName);
 
         // Apply role filter based on hierarchy if not admin
         if (requesterRole !== 'admin') {
@@ -78,16 +86,14 @@ export async function GET(request: Request) {
         } else if (role) {
             const roles = role.split(',');
             if (roles.length > 1) {
-                // @ts-ignore
-                usersQuery = usersQuery.where('role', 'in', roles);
+                usersQuery = (usersQuery as any).where('role', 'in', roles);
             } else {
-                // @ts-ignore
                 usersQuery = usersQuery.where('role', '==', role);
             }
         }
 
         const snapshot = await usersQuery.get();
-        const users = snapshot.docs.map(doc => {
+        const users = snapshot.docs.map((doc: any) => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -112,7 +118,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { project, ...userDataRaw } = body;
+        let { project, ...userDataRaw } = body;
+
+        // If project is not specified, default to Project 1 (Mobile App DB)
+        if (!project) project = PROJECT_GATEPASS;
+
+        // INTELLIGENT ROUTING:
+        // Force Students/Parents/Faculty/HOD/Principal/Security/Admission/Authority to Project 1 (Mobile App DB) ALWAYS
+        // Only 'admin' role (Web Universal Control) remains in Project 2 (IoT System) by default
+        const targetRole = userDataRaw.role?.toLowerCase();
+        const mobileRoles = ['student', 'parent', 'faculty', 'hod', 'principal', 'security', 'admission', 'higher_authority', 'staff'];
+
+        if (mobileRoles.includes(targetRole)) {
+            project = PROJECT_GATEPASS; // Force to Project 1
+        }
+
         const { db, auth } = getFirebaseInstances(project);
 
         if (!auth || !db) {
@@ -133,7 +153,7 @@ export async function POST(request: Request) {
 
         // Smart format email if only ID is provided
         let finalEmail = email;
-        const officialRoles = ['student', 'faculty', 'hod', 'principal', 'admission', 'higher_authority', 'security'];
+        const officialRoles = ['student', 'faculty', 'hod', 'principal', 'admission', 'higher_authority', 'security', 'staff'];
 
         if (!finalEmail || !finalEmail.includes('@')) {
             const id = rest.student_id || rest.id || email;
@@ -192,7 +212,8 @@ export async function POST(request: Request) {
         // Merge remaining fields
         Object.assign(userData, rest);
 
-        await db.collection('users').doc(userRecord.uid).set(userData);
+        const collectionName = getCollectionName(project);
+        await db.collection(collectionName).doc(userRecord.uid).set(userData);
 
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
     } catch (error: any) {
@@ -217,7 +238,9 @@ export async function PUT(request: Request) {
         }
 
         // Check if requester can manage the target user
-        const targetDoc = await db.collection('users').doc(uid).get();
+        // Check if requester can manage the target user
+        const collectionName = getCollectionName(project);
+        const targetDoc = await db.collection(collectionName).doc(uid).get();
         if (!targetDoc.exists) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
@@ -240,7 +263,7 @@ export async function PUT(request: Request) {
         const { password, ...firestoreUpdates } = updates;
         firestoreUpdates.updated_at = new Date().toISOString();
 
-        await db.collection('users').doc(uid).update(firestoreUpdates);
+        await db.collection(collectionName).doc(uid).update(firestoreUpdates);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -266,7 +289,8 @@ export async function DELETE(request: Request) {
         }
 
         // Check if requester can manage the target user
-        const targetDoc = await db.collection('users').doc(uid).get();
+        const collectionName = getCollectionName(project);
+        const targetDoc = await db.collection(collectionName).doc(uid).get();
         if (targetDoc.exists) {
             const targetData = targetDoc.data() || {};
             if (!canManageRole(requesterRole, targetData.role)) {
@@ -278,7 +302,7 @@ export async function DELETE(request: Request) {
         await auth.deleteUser(uid);
 
         // 2. Delete from Firestore
-        await db.collection('users').doc(uid).delete();
+        await db.collection(collectionName).doc(uid).delete();
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

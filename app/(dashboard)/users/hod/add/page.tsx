@@ -21,7 +21,7 @@ import { useSearchParams } from 'next/navigation';
 export default function AddHODPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
-    const project = searchParams.get('project') || '2';
+    const project = searchParams.get('project') || '1';
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isLoadingUser, setIsLoadingUser] = React.useState(!!uid);
@@ -31,6 +31,7 @@ export default function AddHODPage() {
         first_name: '',
         last_name: '',
         email: '',
+        official_email: '',
         password: '',
         phone: '',
         dept: 'Computer Science',
@@ -53,6 +54,7 @@ export default function AddHODPage() {
                         first_name: first || '',
                         last_name: last.join(' ') || '',
                         email: data.email || '',
+                        official_email: data.official_email || '',
                         phone: data.phone || '',
                         dept: data.dept || data.department || 'Computer Science',
                         designation: data.designation || 'HOD',
@@ -98,6 +100,7 @@ export default function AddHODPage() {
                     first_name: '',
                     last_name: '',
                     email: '',
+                    official_email: '',
                     password: '',
                     phone: '',
                     dept: 'Computer Science',
@@ -226,6 +229,16 @@ export default function AddHODPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
+                                <div className="relative">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input required type="email" placeholder="hod@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                        value={formData.official_email}
+                                        onChange={(e) => setFormData({ ...formData, official_email: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
                                 <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender</label>
                                 <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
                                     value={formData.gender}
@@ -254,13 +267,13 @@ export default function AddHODPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Registration Number (User ID) <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="hod@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input required type="text" placeholder="e.g. 2024HOD01" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
                                     disabled={!!uid}
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value.toUpperCase() })}
                                 />
                             </div>
                         </div>

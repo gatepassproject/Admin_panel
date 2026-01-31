@@ -10,25 +10,25 @@ export async function GET() {
     }
 
     try {
-        // 1. Get Student Count
-        const studentsSnapshot = await db2.collection('users').where('role', '==', 'student').get();
+        // 1. Get Student Count from App DB (Project 1)
+        const studentsSnapshot = await db1.collection('users').where('role', '==', 'student').get();
         const studentsCount = studentsSnapshot.size;
 
-        // 2. Get Faculty Count
-        const facultySnapshot = await db2.collection('users').where('role', 'in', ['faculty', 'hod', 'principal']).get();
+        // 2. Get Faculty Count from App DB (Project 1)
+        const facultySnapshot = await db1.collection('users').where('role', 'in', ['faculty', 'hod', 'principal']).get();
         const facultyCount = facultySnapshot.size;
 
-        // 3. Get Active Passes (Approved)
-        const activePassesSnapshot = await db2.collection('gate_passes').where('status', '==', 'Approved').get();
+        // 3. Get Active Passes (Approved) from App DB (Project 1)
+        const activePassesSnapshot = await db1.collection('gate_passes').where('status', '==', 'Approved').get();
         const activePassesCount = activePassesSnapshot.size;
 
-        // 4. Get Active Gates (From IoT System)
+        // 4. Get Active Gates (From IoT System - Project 2)
         const gatesSnapshot = await db2.collection('gate_status').get();
         const gatesCount = gatesSnapshot.size;
         const onlineGatesCount = gatesSnapshot.docs.filter(doc => doc.data().status === 'OPEN' || doc.data().status === 'Online').length;
 
-        // 5. Get Recent Activity (Last 5 updated/created passes)
-        const recentPassesSnapshot = await db2.collection('gate_passes')
+        // 5. Get Recent Activity from App DB (Project 1)
+        const recentPassesSnapshot = await db1.collection('gate_passes')
             .orderBy('updated_at', 'desc')
             .limit(5)
             .get();
@@ -49,8 +49,8 @@ export async function GET() {
         });
 
 
-        // 6. Get Weekly Stats (Last 7 days pass count)
-        const weeklyStatsSnapshot = await db2.collection('gate_passes')
+        // 6. Get Weekly Stats from App DB (Project 1)
+        const weeklyStatsSnapshot = await db1.collection('gate_passes')
             .where('created_at', '>=', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
             .get();
 

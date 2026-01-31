@@ -52,7 +52,7 @@ export default function UniversalManagementPage() {
                         < ShieldCheck className="w-8 h-8 text-[#1e3a5f]" />
                         Web Universal Control
                     </h2>
-                    <p className="text-slate-500 font-medium">Manage all administrative and academic credentials for the **Web Admin Panel**.</p>
+                    <p className="text-slate-500 font-medium">Manage all administrative and academic credentials for the **Web Admin Panel** (admin_panel2 login system).</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm ring-1 ring-[#1e3a5f]/5">
@@ -62,11 +62,11 @@ export default function UniversalManagementPage() {
                         </span>
                     </div>
                     <Link
-                        href={`/users/faculty/add?project=2`}
+                        href={`/users/admin/add?project=2`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"
                     >
                         <Plus className="w-4 h-4" />
-                        <span>Add New User</span>
+                        <span>Add Web Admin</span>
                     </Link>
                 </div>
             </div>

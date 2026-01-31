@@ -54,16 +54,11 @@ export default function PrincipalPage() {
                     <p className="text-slate-500 font-medium">Manage College Principal Account.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-                        <Database className="w-4 h-4 text-slate-400" />
-                        <select
-                            className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-700 outline-none cursor-pointer"
-                            value={project}
-                            onChange={(e) => setProject(e.target.value as '1' | '2')}
-                        >
-                            <option value="1">GatePass (DB1)</option>
-                            <option value="2">IoT System (DB2)</option>
-                        </select>
+                    <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm ring-1 ring-[#c32026]/5">
+                        <Database className="w-4 h-4 text-[#c32026]" />
+                        <span className="text-xs font-black uppercase tracking-widest text-[#c32026]">
+                            Mobile Apps (GatePass DB)
+                        </span>
                     </div>
                     <Link
                         href={`/users/principal/add?project=${project}`}

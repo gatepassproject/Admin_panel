@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export function useUserDashboard(role: string, initialProject: '1' | '2' = '2') {
+export function useUserDashboard(role: string, initialProject: '1' | '2' = '1') {
     const [users, setUsers] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [project, setProject] = React.useState<'1' | '2'>(initialProject);

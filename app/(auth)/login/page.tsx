@@ -38,8 +38,9 @@ export default function LoginPage() {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. Fetch User Role from Firestore
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            // 2. Fetch User Role from Firestore (STRICTLY FROM web_admins in Project 2)
+            const userDoc = await getDoc(doc(db, 'web_admins', user.uid));
+
             if (!userDoc.exists()) {
                 throw new Error('User profile not found in database.');
             }
@@ -79,9 +80,10 @@ export default function LoginPage() {
             const user = auth.currentUser;
             if (!user) throw new Error('No authenticated user found');
 
-            // Final role check (already fetched but let's re-verify if needed)
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            const role = userDoc.data()?.role || 'student';
+            // Final role check (STRICTLY FROM web_admins in Project 2)
+            const userDoc = await getDoc(doc(db, 'web_admins', user.uid));
+            if (!userDoc.exists()) throw new Error('Authorization rejected: Not a web administrator.');
+            const role = userDoc.data()?.role || 'admin';
 
             // Set real session and role cookies
             document.cookie = `session=${user.uid}; path=/; max-age=86400; samesite=lax`;

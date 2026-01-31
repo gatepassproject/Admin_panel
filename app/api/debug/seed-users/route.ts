@@ -72,8 +72,10 @@ async function seedUserToProject(userDataRaw: any, project: '1' | '2') {
             ...rest
         };
 
-        await db.collection('users').doc(userRecord.uid).set(userData);
-        console.log(`Set Firestore doc for ${email} in project ${project}.`);
+        const collectionName = project === '2' ? 'web_admins' : 'users';
+
+        await db.collection(collectionName).doc(userRecord.uid).set(userData);
+        console.log(`Set Firestore doc for ${email} in project ${project} (${collectionName}).`);
 
         return { success: true, uid: userRecord.uid };
     } catch (error: any) {
