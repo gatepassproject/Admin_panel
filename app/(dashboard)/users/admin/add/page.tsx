@@ -12,13 +12,12 @@ import {
     CheckCircle2,
     UserPlus,
     AlertCircle,
-    Briefcase,
     Save
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function AddHigherAuthorityPage() {
+export default function AddAdminPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
     const project = searchParams.get('project') || '2';
@@ -33,9 +32,9 @@ export default function AddHigherAuthorityPage() {
         email: '',
         password: '',
         phone: '',
-        dept: 'Management',
-        designation: 'Higher Authority',
-        role: 'higher_authority',
+        dept: 'Administration',
+        designation: 'System Admin',
+        role: 'admin',
         gender: 'Male'
     });
 
@@ -44,7 +43,7 @@ export default function AddHigherAuthorityPage() {
             const fetchUser = async () => {
                 try {
                     const res = await fetch(`/api/users?uid=${uid}&project=${project}`);
-                    if (!res.ok) throw new Error('Failed to fetch authority data');
+                    if (!res.ok) throw new Error('Failed to fetch user');
                     const data = await res.json();
 
                     const [first, ...last] = (data.full_name || '').split(' ');
@@ -54,13 +53,10 @@ export default function AddHigherAuthorityPage() {
                         last_name: last.join(' ') || '',
                         email: data.email || '',
                         phone: data.phone || '',
-                        dept: data.dept || data.department || 'Management',
-                        designation: data.designation || 'Higher Authority',
-                        role: data.role || 'higher_authority',
-                        gender: data.gender || 'Male'
+                        designation: data.designation || 'System Admin',
                     });
                 } catch (err: any) {
-                    setError('Error loading authority data');
+                    setError('Error loading user data');
                 } finally {
                     setIsLoadingUser(false);
                 }
@@ -102,9 +98,9 @@ export default function AddHigherAuthorityPage() {
                     email: '',
                     password: '',
                     phone: '',
-                    dept: 'Management',
-                    designation: 'Higher Authority',
-                    role: 'higher_authority',
+                    dept: 'Administration',
+                    designation: 'System Admin',
+                    role: 'admin',
                     gender: 'Male'
                 });
             }
@@ -130,17 +126,17 @@ export default function AddHigherAuthorityPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link
-                        href="/users/higher-authority"
+                        href="/users/management"
                         className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
                     >
                         <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        Back to List
+                        Back to Control Center
                     </Link>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                        {uid ? 'Edit' : 'Add'} Higher Authority
+                        {uid ? 'Edit' : 'Add'} Master Admin
                     </h2>
                     <p className="text-slate-500 font-medium">
-                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register a new Management/Authority figure.'}
+                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register a new System Admin account.'}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -162,7 +158,7 @@ export default function AddHigherAuthorityPage() {
                     </div>
                     <div>
                         <p className="font-black text-sm uppercase tracking-wider">Success!</p>
-                        <p className="text-sm font-medium opacity-90">Authority record has been {uid ? 'updated' : 'created'} successfully.</p>
+                        <p className="text-sm font-medium opacity-90">Account has been {uid ? 'updated' : 'created'} successfully.</p>
                     </div>
                 </div>
             )}
@@ -225,17 +221,6 @@ export default function AddHigherAuthorityPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender</label>
-                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
-                                    value={formData.gender}
-                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                                >
-                                    <option>Male</option>
-                                    <option>Female</option>
-                                    <option>Other</option>
-                                </select>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -257,9 +242,8 @@ export default function AddHigherAuthorityPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="authority@ctgroup.in"
+                                <input required type="email" placeholder="admin@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
                                     disabled={!!uid}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 />
@@ -286,9 +270,9 @@ export default function AddHigherAuthorityPage() {
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4">
-                    <Link href="/users/higher-authority" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
+                    <button type="button" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
                         Cancel
-                    </Link>
+                    </button>
                     <button
                         type="submit"
                         disabled={isSubmitting}
@@ -301,3 +285,4 @@ export default function AddHigherAuthorityPage() {
         </div>
     );
 }
+

@@ -1,11 +1,34 @@
 import { NextResponse } from 'next/server';
 import { db1, auth1, db2, auth2 } from '@/lib/firebase-admin';
 
+const PROJECT_GATEPASS = '1';
+const PROJECT_IOT = '2';
+
 function getFirebaseInstances(project: string | null) {
-    if (project === '1') {
+    if (project === PROJECT_GATEPASS) {
         return { db: db1, auth: auth1 };
     }
     return { db: db2, auth: auth2 };
+}
+
+const ROLE_HIERARCHY: Record<string, string[]> = {
+    'admin': ['admin', 'principal', 'hod', 'faculty', 'student', 'parent', 'security', 'admission', 'higher_authority'],
+    'principal': ['hod', 'faculty', 'student', 'parent', 'security'],
+    'hod': ['faculty', 'student'],
+    'faculty': ['student'],
+    'admission': ['admin'],
+};
+
+function canManageRole(requesterRole: string, targetRole: string) {
+    if (requesterRole === 'admin') return true;
+    const manageableRoles = ROLE_HIERARCHY[requesterRole] || [];
+    return manageableRoles.includes(targetRole);
+}
+
+// Helper to get requester role (Simulated - in real app, get from session/token)
+function getRequesterRole(request: Request) {
+    // For simulation, we check a header or default to admin for development
+    return request.headers.get('x-user-role') || 'admin';
 }
 
 export async function GET(request: Request) {
@@ -16,18 +39,43 @@ export async function GET(request: Request) {
 
     const { db } = getFirebaseInstances(project);
 
+    if (!db) {
+        return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
+    }
+
     try {
+        const requesterRole = getRequesterRole(request);
+
         if (uid) {
             const doc = await db.collection('users').doc(uid).get();
             if (!doc.exists) {
                 return NextResponse.json({ error: 'User not found' }, { status: 404 });
             }
-            return NextResponse.json({ id: doc.id, ...doc.data() });
+            const userData = doc.data() || {};
+            if (!canManageRole(requesterRole, userData.role) && requesterRole !== userData.role) {
+                return NextResponse.json({ error: 'Access denied to this user profile' }, { status: 403 });
+            }
+            return NextResponse.json({ id: doc.id, ...userData });
         }
 
         let usersQuery = db.collection('users');
 
-        if (role) {
+        // Apply role filter based on hierarchy if not admin
+        if (requesterRole !== 'admin') {
+            const manageableRoles = ROLE_HIERARCHY[requesterRole] || [];
+            if (role) {
+                const requestedRoles = role.split(',');
+                const filteredRoles = requestedRoles.filter(r => manageableRoles.includes(r));
+                if (filteredRoles.length === 0) {
+                    return NextResponse.json([]); // No manageable roles matched
+                }
+                // @ts-ignore
+                usersQuery = usersQuery.where('role', 'in', filteredRoles);
+            } else {
+                // @ts-ignore
+                usersQuery = usersQuery.where('role', 'in', manageableRoles);
+            }
+        } else if (role) {
             const roles = role.split(',');
             if (roles.length > 1) {
                 // @ts-ignore
@@ -72,7 +120,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, uid: `mock_${Date.now()}` });
         }
 
+        const requesterRole = getRequesterRole(request);
         const { email, password, full_name, role, ...rest } = userDataRaw;
+
+        if (!canManageRole(requesterRole, role)) {
+            return NextResponse.json({ error: 'Permission denied for this role creation' }, { status: 403 });
+        }
 
         if (!full_name || !role) {
             return NextResponse.json({ error: 'Full name and role are required' }, { status: 400 });
@@ -151,6 +204,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
     try {
         const body = await request.json();
+        const requesterRole = getRequesterRole(request);
         const { uid, project, ...updates } = body;
         const { db, auth } = getFirebaseInstances(project);
 
@@ -162,11 +216,21 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
         }
 
+        // Check if requester can manage the target user
+        const targetDoc = await db.collection('users').doc(uid).get();
+        if (!targetDoc.exists) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+        const targetData = targetDoc.data() || {};
+        if (!canManageRole(requesterRole, targetData.role) && uid !== targetDoc.id) {
+            return NextResponse.json({ error: 'Permission denied to update this user' }, { status: 403 });
+        }
+
         // 1. Update Authentication Profile
-        if (updates.full_name || updates.password || updates.email) {
+        if (updates.full_name || (updates.password && updates.password.trim() !== '') || updates.email) {
             const authUpdates: any = {};
             if (updates.full_name) authUpdates.displayName = updates.full_name;
-            if (updates.password) authUpdates.password = updates.password;
+            if (updates.password && updates.password.trim() !== '') authUpdates.password = updates.password;
             if (updates.email) authUpdates.email = updates.email;
 
             await auth.updateUser(uid, authUpdates);
@@ -187,6 +251,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        const requesterRole = getRequesterRole(request);
         const { searchParams } = new URL(request.url);
         const uid = searchParams.get('uid');
         const project = searchParams.get('project');
@@ -198,6 +263,15 @@ export async function DELETE(request: Request) {
 
         if (!auth || !db) {
             return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
+        }
+
+        // Check if requester can manage the target user
+        const targetDoc = await db.collection('users').doc(uid).get();
+        if (targetDoc.exists) {
+            const targetData = targetDoc.data() || {};
+            if (!canManageRole(requesterRole, targetData.role)) {
+                return NextResponse.json({ error: 'Permission denied to delete this user' }, { status: 403 });
+            }
         }
 
         // 1. Delete from Authentication

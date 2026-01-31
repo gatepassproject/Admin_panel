@@ -14,6 +14,9 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { auth, db } from '@/lib/firebase-client';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -25,19 +28,35 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState('');
 
-    const handleCredentialsSubmit = (e: React.FormEvent) => {
+    const handleCredentialsSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
-        setTimeout(() => {
-            setIsLoading(false);
-            if (email === 'admin@gmail.com' && password === 'password123') {
-                setStep('2fa');
-            } else {
-                setError('Invalid administrative credentials. Identity focus rejected.');
+        try {
+            // 1. Firebase Auth Login
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // 2. Fetch User Role from Firestore
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (!userDoc.exists()) {
+                throw new Error('User profile not found in database.');
             }
-        }, 1200);
+
+            const userData = userDoc.data();
+            const role = userData.role || 'student';
+
+            // 3. Store role temporarily for 2FA step or proceed
+            // For now, we'll store it in a ref or local state to be used in handleLoginComplete
+            // (In this simple 2FA mock, we'll just proceed to 2FA)
+            setStep('2fa');
+        } catch (err: any) {
+            console.error('Login Error:', err);
+            setError(err.message || 'Invalid administrative credentials. Identity focus rejected.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleOtpChange = (value: string, index: number) => {
@@ -52,14 +71,28 @@ export default function LoginPage() {
         }
     };
 
-    const handleLoginComplete = () => {
+    const handleLoginComplete = async () => {
         setIsLoading(true);
         setError('');
 
-        setTimeout(() => {
-            document.cookie = "session=active; path=/; max-age=86400; samesite=lax";
+        try {
+            const user = auth.currentUser;
+            if (!user) throw new Error('No authenticated user found');
+
+            // Final role check (already fetched but let's re-verify if needed)
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            const role = userDoc.data()?.role || 'student';
+
+            // Set real session and role cookies
+            document.cookie = `session=${user.uid}; path=/; max-age=86400; samesite=lax`;
+            document.cookie = `user_role=${role}; path=/; max-age=86400; samesite=lax`;
+
             router.push('/');
-        }, 1500);
+        } catch (err: any) {
+            setError('Authorization failed. Access denied.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

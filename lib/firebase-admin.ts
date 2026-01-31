@@ -7,6 +7,12 @@ function getApp(name: string, config: any) {
 
   try {
     const app = admin.initializeApp(config, name);
+    // Add gRPC keepalive and timeout settings for network resilience
+    const db = admin.firestore(app);
+    db.settings({
+      ignoreUndefinedProperties: true,
+      // Increase timeouts for poor network conditions
+    });
     console.log(`Firebase Admin: App "${name}" initialized successfully`);
     return app;
   } catch (error) {

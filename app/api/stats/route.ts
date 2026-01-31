@@ -87,6 +87,11 @@ export async function GET() {
         });
     } catch (error: any) {
         console.error('API Error /api/stats:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        try {
+            const { mockStats } = await import('../mockData');
+            return NextResponse.json({ ...mockStats, error: error.message, is_mock: true });
+        } catch (e) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
     }
 }

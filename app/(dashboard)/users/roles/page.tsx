@@ -28,20 +28,39 @@ const MODULES = [
 
 const ROLES = [
     { id: 'admin', name: 'System Administrator', color: 'bg-slate-900', permissions: ['view', 'create', 'edit', 'delete'] },
+    { id: 'principal', name: 'Campus Principal', color: 'bg-[#1e3a5f]', permissions: ['view', 'create', 'edit'] },
+    { id: 'hod', name: 'Dept Head (HOD)', color: 'bg-emerald-600', permissions: ['view'] },
+    { id: 'faculty', name: 'Faculty Member', color: 'bg-purple-600', permissions: ['view'] },
     { id: 'registrar', name: 'Registrar Office', color: 'bg-[#1e3a5f]', permissions: ['view', 'create', 'edit'] },
     { id: 'security_head', name: 'Security Supervisor', color: 'bg-[#c32026]', permissions: ['view', 'edit'] },
-    { id: 'hod', name: 'Dept Head (HOD)', color: 'bg-emerald-600', permissions: ['view'] },
 ];
 
 export default function RolesPermissionsPage() {
     const [selectedRole, setSelectedRole] = React.useState(ROLES[0].id);
     const [permissions, setPermissions] = React.useState<Record<string, string[]>>({
         admin: ['dashboard', 'users', 'gates', 'passes', 'analytics', 'settings'],
-        registrar: ['dashboard', 'users', 'passes'],
-        security_head: ['dashboard', 'gates', 'passes'],
+        principal: ['dashboard', 'users', 'passes'],
         hod: ['dashboard', 'passes'],
+        faculty: ['dashboard', 'passes'],
     });
     const [isSaving, setIsSaving] = React.useState(false);
+
+    React.useEffect(() => {
+        const fetchPermissions = async () => {
+            try {
+                const res = await fetch('/api/settings/roles-permissions');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Object.keys(data).length > 0) {
+                        setPermissions(data);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to fetch permissions');
+            }
+        };
+        fetchPermissions();
+    }, []);
 
     const togglePermission = (moduleId: string) => {
         setPermissions(prev => {
@@ -53,12 +72,21 @@ export default function RolesPermissionsPage() {
         });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setIsSaving(true);
-        setTimeout(() => {
-            setIsSaving(false);
+        try {
+            const res = await fetch('/api/settings/roles-permissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(permissions),
+            });
+            if (!res.ok) throw new Error('Save failed');
             alert('Access control policy updated successfully!');
-        }, 1500);
+        } catch (e) {
+            alert('Failed to save configuration');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (

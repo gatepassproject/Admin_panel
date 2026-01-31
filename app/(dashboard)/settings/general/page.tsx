@@ -26,6 +26,7 @@ export default function GeneralSettingsPage() {
         institutionName: 'CT Group of Institutions',
         shortName: 'CT GROUP',
         campusCategory: 'University Campus',
+        logo: 'https://www.ctgroup.in/public//frontend/assets/images/NAACCT.png',
         openTime: '06:00',
         closeTime: '23:00',
         weekendOpenTime: '08:00',
@@ -35,10 +36,12 @@ export default function GeneralSettingsPage() {
         address: 'CT Group of Institutions, Shahpur, Near Lambra, Nakodar Road, Jalandhar, Punjab 144020'
     });
 
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
     React.useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await fetch('/api/settings');
+                const res = await fetch('/api/settings?t=' + Date.now());
                 if (res.ok) {
                     const data = await res.json();
                     if (data.general) setSettings(data.general);
@@ -56,6 +59,17 @@ export default function GeneralSettingsPage() {
         setSettings(prev => ({ ...prev, [key]: value }));
     };
 
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setSettings(prev => ({ ...prev, logo: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
@@ -67,6 +81,7 @@ export default function GeneralSettingsPage() {
             });
             if (res.ok) {
                 alert('General settings saved successfully.');
+                window.location.reload(); // Force reload to update Sidebar and global branding
             } else {
                 alert('Failed to save settings.');
             }
@@ -111,15 +126,28 @@ export default function GeneralSettingsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 group hover:border-[#1e3a5f]/40 transition-all cursor-pointer">
-                            <div className="w-20 h-20 rounded-2xl bg-white shadow-sm flex items-center justify-center overflow-hidden p-2">
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 group hover:border-[#1e3a5f]/40 transition-all cursor-pointer relative"
+                        >
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                                className="hidden"
+                                accept="image/*"
+                            />
+                            <div className="w-20 h-20 rounded-2xl bg-white shadow-sm flex items-center justify-center overflow-hidden p-2 relative group-hover:opacity-50 transition-opacity">
                                 <img
-                                    src="https://www.ctgroup.in/public//frontend/assets/images/NAACCT.png"
-                                    alt="CT Group Logo"
+                                    src={settings.logo}
+                                    alt="Institution Logo"
                                     className="w-full h-full object-contain"
                                 />
                             </div>
-                            <p className="mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Brand Identity</p>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-8 h-8 text-[#1e3a5f]" />
+                            </div>
+                            <p className="mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center group-hover:text-[#1e3a5f] transition-colors">Change Identity</p>
                         </div>
 
                         <div className="md:col-span-2 space-y-6">

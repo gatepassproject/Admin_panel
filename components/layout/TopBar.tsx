@@ -31,13 +31,6 @@ export default function TopBar() {
             </div>
 
             <div className="flex items-center gap-3">
-                <button
-                    onClick={() => router.push('/passes')}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm shadow-blue-500/20 transition-all active:scale-95"
-                >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>New Pass</span>
-                </button>
 
                 <div className="h-6 w-px bg-slate-200 mx-2" />
 

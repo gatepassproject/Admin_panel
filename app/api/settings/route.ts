@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db2 } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     if (!db2) {
         return NextResponse.json({ error: 'Firebase not initialized' }, { status: 500 });

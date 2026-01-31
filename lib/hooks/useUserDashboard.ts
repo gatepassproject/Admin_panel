@@ -2,10 +2,10 @@
 
 import React from 'react';
 
-export function useUserDashboard(role: string) {
+export function useUserDashboard(role: string, initialProject: '1' | '2' = '2') {
     const [users, setUsers] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
-    const [project, setProject] = React.useState<'1' | '2'>('2'); // Default to IoT
+    const [project, setProject] = React.useState<'1' | '2'>(initialProject);
     const [selectedUser, setSelectedUser] = React.useState<any>(null);
     const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
 

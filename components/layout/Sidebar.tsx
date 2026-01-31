@@ -23,6 +23,9 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { auth } from '@/lib/firebase-client';
+import { signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
     {
@@ -39,6 +42,8 @@ const navItems = [
             { title: 'Faculty', href: '/users/faculty' },
             { title: 'HOD', href: '/users/hod' },
             { title: 'Principal', href: '/users/principal' },
+            { title: 'Staff Overview', href: '/users/staff' },
+            { title: 'Web Universal Control', href: '/users/management' },
             { title: 'Admission Cell', href: '/users/admission' },
             { title: 'Higher Authority', href: '/users/higher-authority' },
             { title: 'Security Staff', href: '/users/security' },
@@ -101,8 +106,76 @@ const navItems = [
     },
 ];
 
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+    'admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'parents', 'roles', 'admin', 'staff', 'management'],
+    'principal': ['students', 'faculty', 'hod', 'security', 'parents'],
+    'hod': ['students', 'faculty'],
+    'faculty': ['students'],
+    'admission': ['admin'],
+};
+
 export default function Sidebar() {
+    // In a real app, this would come from an auth context/hook
+    // For now, we'll use a simulated role from a cookie or default to admin
+    const [userRole, setUserRole] = React.useState<string>('admin');
+    const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+    const router = useRouter();
+
+    React.useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+
+        // Simple simulation: check for a role cookie
+        const cookieRole = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('user_role='))
+            ?.split('=')[1];
+        if (cookieRole) setUserRole(cookieRole);
+
+        return () => unsubscribe();
+    }, []);
+
+    const handleLogout = async () => {
+        if (confirm('Are you sure you want to log out?')) {
+            try {
+                await signOut(auth);
+                // Clear cookies
+                document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                router.push('/login');
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+    };
     const pathname = usePathname();
+    const [openMenus, setOpenMenus] = React.useState<string[]>(['Users']);
+    const [institution, setInstitution] = React.useState({
+        name: 'CT GROUP',
+        logo: 'https://www.ctgroup.in/public//frontend/assets/images/NAACCT.png'
+    });
+
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('/api/settings?t=' + Date.now());
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.general) {
+                        setInstitution({
+                            name: data.general.shortName || 'CT GROUP',
+                            logo: data.general.logo || 'https://www.ctgroup.in/public//frontend/assets/images/NAACCT.png'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching sidebar settings:', error);
+            }
+        };
+        fetchSettings();
+    }, []);
+
     const [expandedItems, setExpandedItems] = React.useState<string[]>([]);
 
     const toggleExpand = (title: string) => {
@@ -116,27 +189,46 @@ export default function Sidebar() {
     return (
         <aside className="w-64 bg-[#1e3a5f] text-slate-300 h-screen fixed left-0 top-0 flex flex-col border-r border-[#2d4a7a] shadow-xl overflow-y-auto z-50">
             <div className="p-6 flex items-center gap-3">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1 shadow-inner">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1 shadow-inner relative overflow-hidden">
                     <img
-                        src="https://www.ctgroup.in/public//frontend/assets/images/NAACCT.png"
-                        alt="CT Group Logo"
+                        src={institution.logo}
+                        alt="Institution Logo"
                         className="w-full h-full object-contain"
                     />
                 </div>
                 <div>
-                    <h1 className="text-white font-black text-xl leading-tight tracking-tighter">CT GROUP</h1>
+                    <h1 className="text-white font-black text-xl leading-tight tracking-tighter">{institution.name}</h1>
                     <p className="text-[#fec20f] text-[10px] font-black uppercase tracking-widest">Admin Panel</p>
                 </div>
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1">
                 {navItems.map((item) => {
+                    // Filter sub-items based on role
+                    let visibleSubItems = item.subItems;
+                    if (item.title === 'User Management' && item.subItems) {
+                        const allowedSubPaths = ROLE_PERMISSIONS[userRole] || [];
+                        visibleSubItems = item.subItems.filter(sub => {
+                            const subPath = sub.href.split('/').pop() || '';
+                            return allowedSubPaths.includes(subPath);
+                        });
+                    }
+
+                    // Hide certain main items for non-admins
+                    if (userRole !== 'admin' && ['System Settings', 'Support & Utilities'].includes(item.title)) {
+                        return null;
+                    }
+
+                    if (visibleSubItems && visibleSubItems.length === 0 && item.subItems) {
+                        return null; // Don't show parent if all sub-items are filtered out
+                    }
+
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     const isExpanded = expandedItems.includes(item.title) || (isActive && item.subItems);
 
                     return (
                         <div key={item.title} className="space-y-1">
-                            {item.subItems ? (
+                            {visibleSubItems ? (
                                 <button
                                     onClick={() => toggleExpand(item.title)}
                                     className={cn(
@@ -176,9 +268,9 @@ export default function Sidebar() {
                                 </Link>
                             )}
 
-                            {item.subItems && isExpanded && (
+                            {visibleSubItems && isExpanded && (
                                 <div className="ml-9 space-y-1 py-1">
-                                    {item.subItems.map((subItem) => (
+                                    {visibleSubItems.map((subItem) => (
                                         <Link
                                             key={subItem.href}
                                             href={subItem.href}
@@ -199,16 +291,27 @@ export default function Sidebar() {
                 })}
             </nav>
 
-            <div className="p-4 mt-auto border-t border-[#2d4a7a]">
-                <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-xl">
-                    <div className="w-8 h-8 rounded-full bg-[#fec20f] flex items-center justify-center text-[#1e3a5f] text-xs font-black shadow-lg shadow-black/20">
-                        AD
+            <div className="p-4 mt-auto border-t border-[#2d4a7a] bg-[#1e3a5f]/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all duration-300 group">
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#fec20f] to-[#d4a007] flex items-center justify-center text-[#1e3a5f] text-sm font-black shadow-lg shadow-black/20">
+                            {currentUser?.displayName?.[0] || userRole[0].toUpperCase()}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#1e3a5f] shadow-sm"></div>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white truncate">Campus Admin</p>
-                        <p className="text-[10px] text-[#fec20f] font-black truncate uppercase tracking-tighter">CT Group Institutions</p>
+                        <p className="text-sm font-black text-white truncate tracking-tight">
+                            {currentUser?.displayName || (userRole === 'admin' ? 'System Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1))}
+                        </p>
+                        <p className="text-[9px] text-[#fec20f] font-black truncate uppercase tracking-widest opacity-80">
+                            {userRole === 'admin' ? 'Campus Headquarters' : 'CT GROUP INSTITUTIONS'}
+                        </p>
                     </div>
-                    <button className="p-1.5 text-slate-400 hover:text-[#c32026] hover:bg-[#c32026]/10 rounded-lg transition-colors">
+                    <button
+                        onClick={handleLogout}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-red-500 rounded-xl transition-all duration-300 shadow-sm"
+                        title="Logout from System"
+                    >
                         <LogOut className="w-4 h-4" />
                     </button>
                 </div>
