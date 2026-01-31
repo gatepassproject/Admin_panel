@@ -31,8 +31,10 @@ export default function AddSecurityPage() {
     const [formData, setFormData] = React.useState({
         full_name: '',
         email: '',
+        official_email: '',
         password: '',
         phone: '',
+        gender: 'Male',
         gate: 'Main Gate',
         shift: 'Morning',
         badge_id: '',
@@ -50,8 +52,10 @@ export default function AddSecurityPage() {
                     setFormData({
                         full_name: data.full_name || '',
                         email: data.email || '',
+                        official_email: data.official_email || '',
                         password: '',
                         phone: data.phone || '',
+                        gender: data.gender || 'Male',
                         gate: data.gate || 'Main Gate',
                         shift: data.shift || 'Morning',
                         badge_id: data.badge_id || '',
@@ -96,8 +100,10 @@ export default function AddSecurityPage() {
                 setFormData({
                     full_name: '',
                     email: '',
+                    official_email: '',
                     password: '',
                     phone: '',
+                    gender: 'Male',
                     gate: 'Main Gate',
                     shift: 'Morning',
                     badge_id: '',
@@ -209,6 +215,53 @@ export default function AddSecurityPage() {
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender <span className="text-red-500">*</span></label>
+                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                value={formData.gender}
+                                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            >
+                                <option>Male</option>
+                                <option>Female</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="dashboard-card p-8">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                            <Mail className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900">Communication</h3>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-tighter">Official contact details</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input type="email" placeholder="e.g. security.ops@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                    value={formData.official_email}
+                                    onChange={(e) => setFormData({ ...formData, official_email: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">System Role <span className="text-red-500">*</span></label>
+                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                value={formData.role}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            >
+                                <option value="security">Field Security Officer</option>
+                                <option value="security_head">Head of Security</option>
+                                <option value="gate_manager">Gate Operations Manager</option>
+                            </select>
                         </div>
                     </div>
                 </div>

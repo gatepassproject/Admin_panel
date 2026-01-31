@@ -156,18 +156,26 @@ export async function POST(request: Request) {
         const officialRoles = ['student', 'faculty', 'hod', 'principal', 'admission', 'higher_authority', 'security', 'staff'];
 
         if (!finalEmail || !finalEmail.includes('@')) {
-            const id = rest.student_id || rest.id || email;
+            // BUG FIX: Prioritize 'email' (Reg No) or 'id' over 'student_id'
+            // Previous logic: rest.student_id || rest.id || email -> caused Parent ID to be overwritten by Student ID
+            const id = email || rest.id || rest.student_id;
+
             if (!id) {
                 return NextResponse.json({ error: 'Email or ID is required' }, { status: 400 });
             }
 
-            if (officialRoles.includes(role)) {
+            if (role === 'parent') {
+                // FORCE @gatepass.com for parents
+                finalEmail = `${id.split('@')[0]}@gatepass.com`;
+            } else if (officialRoles.includes(role)) {
                 finalEmail = `${id}@ctgroup.in`;
-            } else if (role === 'parent') {
-                finalEmail = `${id}@gatepass.com`;
             } else {
                 finalEmail = `${id}@system.local`;
             }
+        } else if (role === 'parent' && !finalEmail.endsWith('@gatepass.com')) {
+            // If parent provies an email but it's not gatepass.com, force it
+            const idPart = finalEmail.split('@')[0];
+            finalEmail = `${idPart}@gatepass.com`;
         }
 
         // 1. Create user in Firebase Auth

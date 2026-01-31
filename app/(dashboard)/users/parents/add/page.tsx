@@ -32,6 +32,7 @@ export default function AddParentPage() {
         email: '',
         password: '',
         phone: '',
+        gender: 'Male',
         student_id: '',
         relation: 'Father',
         role: 'parent'
@@ -50,6 +51,7 @@ export default function AddParentPage() {
                         email: data.email || '',
                         password: '',
                         phone: data.phone || '',
+                        gender: data.gender || 'Male',
                         student_id: data.student_id || '',
                         relation: data.relation || 'Father',
                         role: data.role || 'parent'
@@ -95,6 +97,7 @@ export default function AddParentPage() {
                     email: '',
                     password: '',
                     phone: '',
+                    gender: 'Male',
                     student_id: '',
                     relation: 'Father',
                     role: 'parent'
@@ -201,6 +204,17 @@ export default function AddParentPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender <span className="text-red-500">*</span></label>
+                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                value={formData.gender}
+                                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            >
+                                <option>Male</option>
+                                <option>Female</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Relation</label>
                             <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/5 focus:border-[#c32026] outline-none transition-all font-bold text-slate-700 cursor-pointer"
                                 value={formData.relation}
@@ -258,11 +272,14 @@ export default function AddParentPage() {
                                 <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input required type="text" placeholder="e.g. PAR202401"
                                     disabled={!!uid}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900 disabled:opacity-50"
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all font-medium text-slate-900 disabled:opacity-50 uppercase"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value.toUpperCase() })}
                                 />
                             </div>
+                            <p className="text-[10px] text-slate-400 pl-1 mt-1">
+                                Recommended format: <span className="font-bold text-slate-500">PAR...</span> (e.g., PAR24001) for auto-detection.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">

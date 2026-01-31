@@ -12,6 +12,7 @@ import {
     CheckCircle2,
     UserPlus,
     AlertCircle,
+    Briefcase,
     Save
 } from 'lucide-react';
 import Link from 'next/link';
@@ -56,6 +57,8 @@ export default function AddAdmissionStaffPage() {
                         official_email: data.official_email || '',
                         phone: data.phone || '',
                         designation: data.designation || 'Admission Officer',
+                        role: data.role || 'admission',
+                        gender: data.gender || 'Male',
                     });
                 } catch (err: any) {
                     setError('Error loading user data');
@@ -243,6 +246,39 @@ export default function AddAdmissionStaffPage() {
                                         onChange={(e) => setFormData({ ...formData, official_email: e.target.value })}
                                     />
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Gender</label>
+                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                    value={formData.gender}
+                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                >
+                                    <option>Male</option>
+                                    <option>Female</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Designation <span className="text-red-500">*</span></label>
+                                <div className="relative">
+                                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input required type="text" placeholder="e.g. Admission Officer" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                        value={formData.designation}
+                                        onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">System Role <span className="text-red-500">*</span></label>
+                                <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                    value={formData.role}
+                                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                >
+                                    <option value="admission">Admission Cell</option>
+                                    <option value="faculty">Faculty</option>
+                                    <option value="hod">HOD</option>
+                                    <option value="staff">Staff / Security</option>
+                                </select>
                             </div>
                         </div>
                     </div>
