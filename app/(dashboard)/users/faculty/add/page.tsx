@@ -183,6 +183,16 @@ export default function AddFacultyPage() {
                 </div>
             )}
 
+            {formData.email.includes('@') && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-700 px-6 py-3 rounded-xl flex items-center gap-3 animate-in fade-in duration-300">
+                    <AlertCircle className="w-5 h-5 text-amber-500" />
+                    <p className="text-sm font-bold">
+                        <span className="uppercase tracking-wider mr-2">Warning:</span>
+                        Registration Number should not be an email. Use a unique ID (e.g. FAC123456)
+                    </p>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Module: Professional Information */}
                 <div className="dashboard-card p-8">
@@ -272,10 +282,10 @@ export default function AddFacultyPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Registration Number (User ID) <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Shield className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${formData.email.includes('@') ? 'text-red-500' : 'text-slate-400'}`} />
                                 <input required type="text" placeholder="e.g. FAC123456"
                                     disabled={!!uid}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 disabled:opacity-50 uppercase"
+                                    className={`w-full pl-11 pr-4 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 outline-none transition-all font-medium text-slate-900 disabled:opacity-50 uppercase ${formData.email.includes('@') ? 'border-red-500 focus:ring-red-500/10 focus:border-red-600' : 'border-slate-200 focus:ring-blue-500/10 focus:border-blue-500'}`}
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value.toUpperCase() })}
                                 />
