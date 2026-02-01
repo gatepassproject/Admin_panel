@@ -51,7 +51,19 @@ export default function AddStudentPage() {
         address: ''
     });
 
+    const [userDept, setUserDept] = React.useState('');
+
     React.useEffect(() => {
+        // Get department from cookie
+        const departmentCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('user_department='));
+        const dept = departmentCookie?.split('=')[1];
+        if (dept) {
+            setUserDept(dept);
+            setFormData(prev => ({ ...prev, dept: dept }));
+        }
+
         if (uid) {
             const fetchUser = async () => {
                 try {
@@ -70,7 +82,7 @@ export default function AddStudentPage() {
                         gender: data.gender || 'Male',
                         blood_group: data.blood_group || 'O+',
                         student_id: data.reg_no || data.student_id || '',
-                        dept: data.dept || data.branch || 'Computer Science',
+                        dept: data.department || data.dept || data.branch || dept || 'Computer Science', // prioritize fetched data, then cookie
                         year: data.year || '1st Year',
                         father_name: data.father_name || '',
                         guardian_phone: data.guardian_phone || '',
@@ -98,6 +110,7 @@ export default function AddStudentPage() {
                 email: formData.email || formData.student_id,
                 full_name: `${formData.first_name} ${formData.last_name}`,
                 role: 'student',
+                department: formData.dept, // Ensure department is sent
                 project,
                 ...(uid ? { uid } : {})
             };
@@ -358,15 +371,26 @@ export default function AddStudentPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Department <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                            <select required
+                                className={cn(
+                                    "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer",
+                                    userDept && "opacity-60 cursor-not-allowed bg-slate-100"
+                                )}
                                 value={formData.dept}
                                 onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
+                                disabled={!!userDept}
                             >
                                 <option value="">Select Department</option>
-                                <option>Computer Science</option>
-                                <option>Mechanical Engineering</option>
-                                <option>Electronics</option>
-                                <option>Civil Engineering</option>
+                                <option value={formData.dept}>{formData.dept}</option>
+                                {/* Only show other options if not locked to a department */}
+                                {!userDept && (
+                                    <>
+                                        <option>Computer Science</option>
+                                        <option>Mechanical Engineering</option>
+                                        <option>Electronics</option>
+                                        <option>Civil Engineering</option>
+                                    </>
+                                )}
                             </select>
                         </div>
                         <div className="space-y-2">

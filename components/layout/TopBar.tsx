@@ -11,11 +11,35 @@ import {
     Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+
+// Helper function to format role display
+function formatRole(role: string): string {
+    const roleMap: Record<string, string> = {
+        'admin': 'Master Admin',
+        'principal': 'Principal',
+        'hod': 'HOD',
+        'faculty': 'Faculty',
+        'admission': 'Admission Cell',
+        'higher_authority': 'Higher Authority',
+        'security': 'Security Staff',
+    };
+    return roleMap[role.toLowerCase()] || role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+// Helper function to get user initials
+function getInitials(name: string): string {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
 
 export default function TopBar() {
     const router = useRouter();
+    const { user, isLoading } = useCurrentUser();
 
     return (
         <header className="h-16 bg-white border-b border-slate-200 fixed top-0 right-0 left-64 flex items-center justify-between px-8 z-40 transition-all duration-300">
@@ -65,12 +89,22 @@ export default function TopBar() {
 
                 <button className="flex items-center gap-2 p-1 pl-2 hover:bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200 group active:scale-95">
                     <div className="flex flex-col items-end">
-                        <span className="text-xs font-bold text-slate-700 leading-none">Admin</span>
+                        <span className="text-xs font-bold text-slate-700 leading-none">
+                            {isLoading ? 'Loading...' : user?.full_name || 'Admin'}
+                        </span>
                         <span className="text-[10px] font-medium text-green-500">Online</span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
-                        <User className="w-4 h-4" />
-                    </div>
+                    {user?.photoURL ? (
+                        <img
+                            src={user.photoURL}
+                            alt={user.full_name}
+                            className="w-8 h-8 rounded-lg object-cover"
+                        />
+                    ) : (
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
+                            {user ? getInitials(user.full_name) : <User className="w-4 h-4" />}
+                        </div>
+                    )}
                 </button>
             </div>
         </header>

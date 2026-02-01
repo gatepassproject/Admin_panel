@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function AddHODPage() {
     const searchParams = useSearchParams();
@@ -40,7 +41,19 @@ export default function AddHODPage() {
         gender: 'Male'
     });
 
+    const [userDept, setUserDept] = React.useState('');
+
     React.useEffect(() => {
+        // Get department from cookie
+        const departmentCookie = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('user_department='));
+        const dept = departmentCookie?.split('=')[1];
+        if (dept) {
+            setUserDept(dept);
+            setFormData(prev => ({ ...prev, dept: dept }));
+        }
+
         if (uid) {
             const fetchUser = async () => {
                 try {
@@ -56,7 +69,7 @@ export default function AddHODPage() {
                         email: data.email || '',
                         official_email: data.official_email || '',
                         phone: data.phone || '',
-                        dept: data.dept || data.department || 'Computer Science',
+                        dept: data.dept || data.department || dept || 'Computer Science',
                         designation: data.designation || 'HOD',
                     });
                 } catch (err: any) {
@@ -79,6 +92,7 @@ export default function AddHODPage() {
             const body = {
                 ...formData,
                 full_name: `${formData.first_name} ${formData.last_name}`,
+                department: formData.dept, // Ensure department is sent
                 project,
                 ...(uid ? { uid } : {})
             };
@@ -321,16 +335,26 @@ export default function AddHODPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Department <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                            <select required
+                                className={cn(
+                                    "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer",
+                                    userDept && "opacity-60 cursor-not-allowed bg-slate-100"
+                                )}
                                 value={formData.dept}
                                 onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
+                                disabled={!!userDept}
                             >
                                 <option value="">Select Department</option>
-                                <option>Computer Science</option>
-                                <option>Mechanical Engineering</option>
-                                <option>Electronics</option>
-                                <option>Civil Engineering</option>
-                                <option>Administration</option>
+                                <option value={formData.dept}>{formData.dept}</option>
+                                {!userDept && (
+                                    <>
+                                        <option>Computer Science</option>
+                                        <option>Mechanical Engineering</option>
+                                        <option>Electronics</option>
+                                        <option>Civil Engineering</option>
+                                        <option>Administration</option>
+                                    </>
+                                )}
                             </select>
                         </div>
                         <div className="space-y-2">

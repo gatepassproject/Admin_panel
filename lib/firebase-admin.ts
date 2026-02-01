@@ -47,4 +47,28 @@ export const db2 = iotApp ? admin.firestore(iotApp) : null;
 export const auth1 = gatepassApp ? admin.auth(gatepassApp) : null;
 export const auth2 = iotApp ? admin.auth(iotApp) : null;
 
+/**
+ * Extract department code from request headers
+ * @param request - Next.js Request object
+ * @returns Department code or null
+ */
+export function getDepartmentFromRequest(request: Request): string | null {
+  return request.headers.get('x-user-department');
+}
+
+/**
+ * Extract department code from cookies
+ * @param cookieHeader - Cookie header string
+ * @returns Department code or null
+ */
+export function getDepartmentFromCookies(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+
+  const departmentCookie = cookieHeader
+    .split('; ')
+    .find(row => row.startsWith('user_department='));
+
+  return departmentCookie ? departmentCookie.split('=')[1] : null;
+}
+
 export { admin };

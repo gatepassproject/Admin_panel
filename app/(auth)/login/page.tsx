@@ -9,7 +9,8 @@ import {
     Eye,
     EyeOff,
     RefreshCw,
-    Fingerprint
+    Fingerprint,
+    Building2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,10 +18,12 @@ import { cn } from '@/lib/utils';
 import { auth, db } from '@/lib/firebase-client';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { DEPARTMENTS, getDepartmentCollectionName, type DepartmentCode, getAllCategories, getDepartmentsByCategory } from '@/lib/constants/departments';
 
 export default function LoginPage() {
     const router = useRouter();
-    const [step, setStep] = React.useState<'credentials' | '2fa'>('credentials');
+    const [step, setStep] = React.useState<'department' | 'credentials' | '2fa'>('department');
+    const [department, setDepartment] = React.useState<DepartmentCode | ''>('');
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [otp, setOtp] = React.useState(['', '', '', '', '', '']);
@@ -28,29 +31,48 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState('');
 
+    const handleDepartmentSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!department) {
+            setError('Please select a department');
+            return;
+        }
+        setError('');
+        setStep('credentials');
+    };
+
     const handleCredentialsSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
         try {
+            if (!department) {
+                throw new Error('Department not selected');
+            }
+
             // 1. Firebase Auth Login
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. Fetch User Role from Firestore (STRICTLY FROM web_admins in Project 2)
-            const userDoc = await getDoc(doc(db, 'web_admins', user.uid));
+            // 2. Fetch User Role from Firestore (department-scoped collection in Project 2)
+            const collectionName = getDepartmentCollectionName('web_admins', department);
+            const userDoc = await getDoc(doc(db, collectionName, user.uid));
 
             if (!userDoc.exists()) {
-                throw new Error('User profile not found in database.');
+                throw new Error('User profile not found in this department.');
             }
 
             const userData = userDoc.data();
             const role = userData.role || 'student';
+            const userDept = userData.department;
 
-            // 3. Store role temporarily for 2FA step or proceed
-            // For now, we'll store it in a ref or local state to be used in handleLoginComplete
-            // (In this simple 2FA mock, we'll just proceed to 2FA)
+            // Verify department matches
+            if (userDept !== department) {
+                throw new Error('Department mismatch. Please select the correct department.');
+            }
+
+            // 3. Store department and proceed to 2FA
             setStep('2fa');
         } catch (err: any) {
             console.error('Login Error:', err);
@@ -78,16 +100,19 @@ export default function LoginPage() {
 
         try {
             const user = auth.currentUser;
-            if (!user) throw new Error('No authenticated user found');
+            if (!user || !department) throw new Error('No authenticated user found');
 
-            // Final role check (STRICTLY FROM web_admins in Project 2)
-            const userDoc = await getDoc(doc(db, 'web_admins', user.uid));
+            // Final role check (department-scoped collection in Project 2)
+            const collectionName = getDepartmentCollectionName('web_admins', department);
+            const userDoc = await getDoc(doc(db, collectionName, user.uid));
             if (!userDoc.exists()) throw new Error('Authorization rejected: Not a web administrator.');
-            const role = userDoc.data()?.role || 'admin';
+            const userData = userDoc.data();
+            const role = userData?.role || 'admin';
 
-            // Set real session and role cookies
+            // Set real session, role, and department cookies
             document.cookie = `session=${user.uid}; path=/; max-age=86400; samesite=lax`;
             document.cookie = `user_role=${role}; path=/; max-age=86400; samesite=lax`;
+            document.cookie = `user_department=${department}; path=/; max-age=86400; samesite=lax`;
 
             router.push('/');
         } catch (err: any) {
@@ -97,9 +122,66 @@ export default function LoginPage() {
         }
     };
 
+    const categories = getAllCategories();
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            {step === 'credentials' ? (
+            {step === 'department' ? (
+                <>
+                    <div className="space-y-3">
+                        <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight uppercase italic flex items-center gap-2">
+                            <span className="w-1.5 h-8 bg-[#c32026] rounded-full inline-block" />
+                            Select Department
+                        </h2>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest opacity-80">Choose your department to access the system.</p>
+                    </div>
+
+                    {error && (
+                        <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 animate-shake shadow-lg shadow-red-500/5">
+                            <AlertCircle className="w-5 h-5 shrink-0" />
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleDepartmentSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Department</label>
+                            <div className="relative group/input">
+                                <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within/input:text-[#1e3a5f] transition-all duration-300 z-10" />
+                                <select
+                                    required
+                                    value={department}
+                                    onChange={(e) => setDepartment(e.target.value as DepartmentCode)}
+                                    className="w-full pl-14 pr-4 py-4.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-0 focus:border-[#1e3a5f] focus:bg-white outline-none transition-all duration-300 font-bold text-slate-900 group-hover/input:bg-slate-50 appearance-none cursor-pointer"
+                                >
+                                    <option value="">Select your department...</option>
+                                    {categories.map(category => (
+                                        <optgroup key={category} label={category}>
+                                            {getDepartmentsByCategory(category).map(dept => (
+                                                <option key={dept.code} value={dept.code}>
+                                                    {dept.code} - {dept.name}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-0 border border-[#1e3a5f] rounded-2xl opacity-0 group-focus-within/input:opacity-100 pointer-events-none transition-opacity duration-300" />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={!department}
+                            className="group relative w-full overflow-hidden py-5 bg-[#1e3a5f] text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-[0_20px_40px_-12px_rgba(30,58,95,0.3)] transition-all duration-300 active:scale-95 disabled:opacity-50"
+                        >
+                            <div className="absolute inset-0 w-12 bg-white/10 skew-x-[30deg] -translate-x-[150%] group-hover:translate-x-[400%] transition-transform duration-1000 ease-in-out" />
+                            <span className="relative flex items-center justify-center gap-3">
+                                Continue to Login <ArrowRight className="w-5 h-5" />
+                            </span>
+                        </button>
+                    </form>
+                </>
+            ) : step === 'credentials' ? (
                 <>
                     <div className="space-y-3">
                         <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight uppercase italic flex items-center gap-2">

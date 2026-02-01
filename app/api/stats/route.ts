@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db1, db2 } from '@/lib/firebase-admin';
+import { db1, db2, getDepartmentFromRequest } from '@/lib/firebase-admin';
+import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode } from '@/lib/constants/departments';
 
-export async function GET() {
+export async function GET(request: Request) {
     // Check if DB is initialized (it might be null if env vars are missing)
     if (!db1 || !db2) {
         console.warn('Firebase Admin not initialized, returning mock stats');
@@ -10,28 +11,50 @@ export async function GET() {
     }
 
     try {
+        // Get department from request header (set by middleware or client)
+        const department = getDepartmentFromRequest(request) as DepartmentCode | null;
+
+        // For master admins, filter by department
+        // For super admins, show all data
+
         // 1. Get Student Count from App DB (Project 1)
-        const studentsSnapshot = await db1.collection('users').where('role', '==', 'student').get();
+        let studentsQuery = db1.collection('users').where('role', '==', 'student');
+        if (department && isValidDepartmentCode(department)) {
+            studentsQuery = studentsQuery.where('department', '==', department);
+        }
+        const studentsSnapshot = await studentsQuery.get();
         const studentsCount = studentsSnapshot.size;
 
         // 2. Get Faculty Count from App DB (Project 1)
-        const facultySnapshot = await db1.collection('users').where('role', 'in', ['faculty', 'hod', 'principal']).get();
+        let facultyQuery = db1.collection('users').where('role', 'in', ['faculty', 'hod', 'principal']);
+        if (department && isValidDepartmentCode(department)) {
+            facultyQuery = facultyQuery.where('department', '==', department);
+        }
+        const facultySnapshot = await facultyQuery.get();
         const facultyCount = facultySnapshot.size;
 
         // 3. Get Active Passes (Approved) from App DB (Project 1)
-        const activePassesSnapshot = await db1.collection('gate_passes').where('status', '==', 'Approved').get();
+        let activePassesQuery = db1.collection('gate_passes').where('status', '==', 'Approved');
+        if (department && isValidDepartmentCode(department)) {
+            activePassesQuery = activePassesQuery.where('department', '==', department);
+        }
+        const activePassesSnapshot = await activePassesQuery.get();
         const activePassesCount = activePassesSnapshot.size;
 
         // 4. Get Active Gates (From IoT System - Project 2)
+        // Gates are shared across departments
         const gatesSnapshot = await db2.collection('gate_status').get();
         const gatesCount = gatesSnapshot.size;
         const onlineGatesCount = gatesSnapshot.docs.filter(doc => doc.data().status === 'OPEN' || doc.data().status === 'Online').length;
 
         // 5. Get Recent Activity from App DB (Project 1)
-        const recentPassesSnapshot = await db1.collection('gate_passes')
+        let recentPassesQuery = db1.collection('gate_passes')
             .orderBy('updated_at', 'desc')
-            .limit(5)
-            .get();
+            .limit(5);
+        if (department && isValidDepartmentCode(department)) {
+            recentPassesQuery = recentPassesQuery.where('department', '==', department);
+        }
+        const recentPassesSnapshot = await recentPassesQuery.get();
 
         const recentActivity = recentPassesSnapshot.docs.map(doc => {
             const data = doc.data();
@@ -50,9 +73,12 @@ export async function GET() {
 
 
         // 6. Get Weekly Stats from App DB (Project 1)
-        const weeklyStatsSnapshot = await db1.collection('gate_passes')
-            .where('created_at', '>=', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-            .get();
+        let weeklyStatsQuery = db1.collection('gate_passes')
+            .where('created_at', '>=', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        if (department && isValidDepartmentCode(department)) {
+            weeklyStatsQuery = weeklyStatsQuery.where('department', '==', department);
+        }
+        const weeklyStatsSnapshot = await weeklyStatsQuery.get();
 
         const weeklyStatsMap = new Map();
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -83,6 +109,7 @@ export async function GET() {
             onlineGates: onlineGatesCount,
             recentActivity,
             weeklyStats,
+            department: department || 'all',
             timestamp: new Date().toISOString()
         });
     } catch (error: any) {

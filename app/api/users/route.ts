@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db1, auth1, db2, auth2 } from '@/lib/firebase-admin';
+import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode } from '@/lib/constants/departments';
 
 const PROJECT_GATEPASS = '1';
 const PROJECT_IOT = '2';
@@ -11,13 +12,20 @@ function getFirebaseInstances(project: string | null) {
     return { db: db1, auth: auth1 };
 }
 
-function getCollectionName(project: string | null) {
-    if (project === PROJECT_IOT) return 'web_admins';
-    // Default to 'users' for Project 1 (Mobile App) or generic access
-    return 'users';
+function getCollectionName(project: string | null, department: DepartmentCode | null = null) {
+    const baseCollection = project === PROJECT_IOT ? 'web_admins' : 'users';
+
+    // If department is provided, return department-scoped collection
+    if (department && isValidDepartmentCode(department)) {
+        return getDepartmentCollectionName(baseCollection, department);
+    }
+
+    // Fallback to base collection for backward compatibility
+    return baseCollection;
 }
 
 const ROLE_HIERARCHY: Record<string, string[]> = {
+    'master_admin': ['principal', 'hod', 'faculty', 'student', 'parent', 'security', 'admission', 'higher_authority'],
     'admin': ['admin', 'principal', 'hod', 'faculty', 'student', 'parent', 'security', 'admission', 'higher_authority'],
     'principal': ['hod', 'faculty', 'student', 'parent', 'security'],
     'hod': ['faculty', 'student'],
@@ -27,8 +35,33 @@ const ROLE_HIERARCHY: Record<string, string[]> = {
 
 function canManageRole(requesterRole: string, targetRole: string) {
     if (requesterRole === 'admin') return true;
+    if (requesterRole === 'master_admin') {
+        const manageableRoles = ROLE_HIERARCHY['master_admin'] || [];
+        return manageableRoles.includes(targetRole);
+    }
     const manageableRoles = ROLE_HIERARCHY[requesterRole] || [];
     return manageableRoles.includes(targetRole);
+}
+
+function canManageUser(
+    requesterDept: DepartmentCode | null,
+    requesterRole: string,
+    targetDept: DepartmentCode | null,
+    targetRole: string
+): boolean {
+    // Admin can manage all departments
+    if (requesterRole === 'admin') return true;
+
+    // Master admins can only manage users in their own department
+    if (requesterRole === 'master_admin') {
+        if (requesterDept !== targetDept) return false;
+        return canManageRole(requesterRole, targetRole);
+    }
+
+    // Other roles must be in same department
+    if (requesterDept !== targetDept) return false;
+
+    return canManageRole(requesterRole, targetRole);
 }
 
 // Helper to get requester role (Simulated - in real app, get from session/token)
@@ -42,6 +75,7 @@ export async function GET(request: Request) {
     const role = searchParams.get('role');
     const project = searchParams.get('project'); // '1' for gatepass, '2' or null for iot
     const uid = searchParams.get('uid');
+    const department = searchParams.get('department') as DepartmentCode | null;
 
     const { db } = getFirebaseInstances(project);
 
@@ -49,11 +83,16 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
     }
 
+    // Validate department if provided
+    if (department && !isValidDepartmentCode(department)) {
+        return NextResponse.json({ error: 'Invalid department code' }, { status: 400 });
+    }
+
     try {
         const requesterRole = getRequesterRole(request);
 
         if (uid) {
-            const collectionName = getCollectionName(project);
+            const collectionName = getCollectionName(project, department);
             const doc = await db.collection(collectionName).doc(uid).get();
             if (!doc.exists) {
                 return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -65,7 +104,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ id: doc.id, ...userData });
         }
 
-        const collectionName = getCollectionName(project);
+        const collectionName = getCollectionName(project, department);
         let usersQuery: any = db.collection(collectionName);
 
         // Apply role filter based on hierarchy if not admin
@@ -118,7 +157,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        let { project, ...userDataRaw } = body;
+        let { project, department, ...userDataRaw } = body;
+
+        // Validate department
+        if (!department || !isValidDepartmentCode(department)) {
+            return NextResponse.json({ error: 'Valid department code is required' }, { status: 400 });
+        }
 
         // If project is not specified, default to Project 1 (Mobile App DB)
         if (!project) project = PROJECT_GATEPASS;
@@ -191,6 +235,7 @@ export async function POST(request: Request) {
             email: finalEmail,
             full_name,
             role,
+            department,
             status: 'Inside',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -220,7 +265,7 @@ export async function POST(request: Request) {
         // Merge remaining fields
         Object.assign(userData, rest);
 
-        const collectionName = getCollectionName(project);
+        const collectionName = getCollectionName(project, department);
         await db.collection(collectionName).doc(userRecord.uid).set(userData);
 
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
@@ -234,7 +279,13 @@ export async function PUT(request: Request) {
     try {
         const body = await request.json();
         const requesterRole = getRequesterRole(request);
-        const { uid, project, ...updates } = body;
+        const { uid, project, department, ...updates } = body;
+
+        // Validate department
+        if (department && !isValidDepartmentCode(department)) {
+            return NextResponse.json({ error: 'Invalid department code' }, { status: 400 });
+        }
+
         const { db, auth } = getFirebaseInstances(project);
 
         if (!uid) {
@@ -246,8 +297,7 @@ export async function PUT(request: Request) {
         }
 
         // Check if requester can manage the target user
-        // Check if requester can manage the target user
-        const collectionName = getCollectionName(project);
+        const collectionName = getCollectionName(project, department);
         const targetDoc = await db.collection(collectionName).doc(uid).get();
         if (!targetDoc.exists) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -286,6 +336,13 @@ export async function DELETE(request: Request) {
         const { searchParams } = new URL(request.url);
         const uid = searchParams.get('uid');
         const project = searchParams.get('project');
+        const department = searchParams.get('department') as DepartmentCode | null;
+
+        // Validate department
+        if (department && !isValidDepartmentCode(department)) {
+            return NextResponse.json({ error: 'Invalid department code' }, { status: 400 });
+        }
+
         const { db, auth } = getFirebaseInstances(project);
 
         if (!uid) {
@@ -297,7 +354,7 @@ export async function DELETE(request: Request) {
         }
 
         // Check if requester can manage the target user
-        const collectionName = getCollectionName(project);
+        const collectionName = getCollectionName(project, department);
         const targetDoc = await db.collection(collectionName).doc(uid).get();
         if (targetDoc.exists) {
             const targetData = targetDoc.data() || {};

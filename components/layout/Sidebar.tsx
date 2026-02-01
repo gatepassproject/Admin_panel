@@ -24,8 +24,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase-client';
-import { signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 
 const navItems = [
     {
@@ -42,7 +43,7 @@ const navItems = [
             { title: 'Faculty', href: '/users/faculty' },
             { title: 'HOD', href: '/users/hod' },
             { title: 'Principal', href: '/users/principal' },
-            { title: 'Staff Overview', href: '/users/staff' },
+
             { title: 'Web Universal Control', href: '/users/management' },
             { title: 'Admission Cell', href: '/users/admission' },
             { title: 'Higher Authority', href: '/users/higher-authority' },
@@ -107,6 +108,7 @@ const navItems = [
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
+    'master_admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'parents', 'roles'],
     'admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'parents', 'roles', 'admin', 'staff', 'management'],
     'principal': ['students', 'faculty', 'hod', 'security', 'parents'],
     'hod': ['students', 'faculty'],
@@ -114,27 +116,34 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'admission': ['admin'],
 };
 
+// Helper function to get user initials
+function getInitials(name: string): string {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
+// Helper function to format role display
+function formatRoleDisplay(role: string): string {
+    const roleMap: Record<string, string> = {
+        'master_admin': 'Master Administrator',
+        'admin': 'System Admin',
+        'principal': 'Principal',
+        'hod': 'Head of Department',
+        'faculty': 'Faculty Member',
+        'admission': 'Admission Cell',
+        'higher_authority': 'Higher Authority',
+        'security': 'Security Staff',
+    };
+    return roleMap[role.toLowerCase()] || role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 export default function Sidebar() {
-    // In a real app, this would come from an auth context/hook
-    // For now, we'll use a simulated role from a cookie or default to admin
-    const [userRole, setUserRole] = React.useState<string>('admin');
-    const [currentUser, setCurrentUser] = React.useState<User | null>(null);
+    const { user, isLoading } = useCurrentUser();
+    const userRole = user?.role || 'admin';
     const router = useRouter();
-
-    React.useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-        });
-
-        // Simple simulation: check for a role cookie
-        const cookieRole = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('user_role='))
-            ?.split('=')[1];
-        if (cookieRole) setUserRole(cookieRole);
-
-        return () => unsubscribe();
-    }, []);
 
     const handleLogout = async () => {
         if (confirm('Are you sure you want to log out?')) {
@@ -143,6 +152,7 @@ export default function Sidebar() {
                 // Clear cookies
                 document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie = "user_department=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 router.push('/login');
             } catch (error) {
                 console.error('Logout failed:', error);
@@ -294,17 +304,25 @@ export default function Sidebar() {
             <div className="p-4 mt-auto border-t border-[#2d4a7a] bg-[#1e3a5f]/50 backdrop-blur-sm">
                 <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all duration-300 group">
                     <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#fec20f] to-[#d4a007] flex items-center justify-center text-[#1e3a5f] text-sm font-black shadow-lg shadow-black/20">
-                            {currentUser?.displayName?.[0] || userRole[0].toUpperCase()}
-                        </div>
+                        {user?.photoURL ? (
+                            <img
+                                src={user.photoURL}
+                                alt={user.full_name}
+                                className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-black/20"
+                            />
+                        ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#fec20f] to-[#d4a007] flex items-center justify-center text-[#1e3a5f] text-sm font-black shadow-lg shadow-black/20">
+                                {user ? getInitials(user.full_name) : 'A'}
+                            </div>
+                        )}
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#1e3a5f] shadow-sm"></div>
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-white truncate tracking-tight">
-                            {currentUser?.displayName || (userRole === 'admin' ? 'System Admin' : userRole.charAt(0).toUpperCase() + userRole.slice(1))}
+                            {isLoading ? 'Loading...' : user?.full_name || 'System Admin'}
                         </p>
                         <p className="text-[9px] text-[#fec20f] font-black truncate uppercase tracking-widest opacity-80">
-                            {userRole === 'admin' ? 'Campus Headquarters' : 'CT GROUP INSTITUTIONS'}
+                            {user?.department_name || user?.designation || (userRole === 'admin' ? 'Campus Headquarters' : 'CT GROUP INSTITUTIONS')}
                         </p>
                     </div>
                     <button
