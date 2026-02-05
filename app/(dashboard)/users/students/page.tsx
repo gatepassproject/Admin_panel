@@ -20,8 +20,13 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DEPARTMENTS, isValidDepartmentCode } from '@/lib/constants/departments';
 
 export default function StudentsPage() {
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [selectedDepartment, setSelectedDepartment] = React.useState('All Departments');
+    const [selectedBatch, setSelectedBatch] = React.useState('All Batches');
+
     const {
         users: students,
         isLoading,
@@ -32,18 +37,20 @@ export default function StudentsPage() {
         setIsViewModalOpen,
         handleDelete,
         handleView
-    } = useUserDashboard('student', '1'); // Force Project 1 (Mobile App DB)
-
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedBranch, setSelectedBranch] = React.useState('All Branches');
-    const [selectedYear, setSelectedYear] = React.useState('All Years');
+    } = useUserDashboard('student', '1', selectedDepartment); // Pass selectedDepartment to enable dynamic fetching
 
     const filteredStudents = students.filter(s =>
         (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.roll_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.reg_no?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedBranch === 'All Branches' || s.branch === selectedBranch) &&
-        (selectedYear === 'All Years' || s.year === selectedYear)
+        (selectedDepartment === 'All Departments' ||
+            (s.department || s.branch) === selectedDepartment ||
+            (s.department === 'Computer Science Engineering' && selectedDepartment === 'CSE') ||
+            (s.department === 'Internet of Things' && selectedDepartment === 'IOT') ||
+            (s.department === 'IoT' && selectedDepartment === 'IOT') ||
+            (s.department === 'Computer Science' && selectedDepartment === 'CSE')) &&
+        (selectedBatch === 'All Batches' || (s.batch || s.year) === selectedBatch)
     );
 
     return (
@@ -95,31 +102,30 @@ export default function StudentsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[140px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch:</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Department:</span>
                         <select
                             className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
-                            value={selectedBranch}
-                            onChange={(e) => setSelectedBranch(e.target.value)}
+                            value={selectedDepartment}
+                            onChange={(e) => setSelectedDepartment(e.target.value)}
                         >
-                            <option>All Branches</option>
-                            <option>CSE</option>
-                            <option>ME</option>
-                            <option>ECE</option>
-                            <option>Civil</option>
+                            <option>All Departments</option>
+                            {Object.values(DEPARTMENTS).map(dept => (
+                                <option key={dept.code} value={dept.code}>{dept.code}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[120px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Year:</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Batch:</span>
                         <select
                             className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
+                            value={selectedBatch}
+                            onChange={(e) => setSelectedBatch(e.target.value)}
                         >
-                            <option>All Years</option>
-                            <option>1st Year</option>
-                            <option>2nd Year</option>
-                            <option>3rd Year</option>
-                            <option>4th Year</option>
+                            <option>All Batches</option>
+                            <option>2022-2026</option>
+                            <option>2023-2027</option>
+                            <option>2024-2028</option>
+                            <option>2025-2029</option>
                         </select>
                     </div>
                 </div>
@@ -167,14 +173,14 @@ export default function StudentsPage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold text-slate-900 group-hover:text-[#1e3a5f] transition-colors">{student.full_name}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{student.reg_no || student.uid?.slice(0, 8)}</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Roll No: {student.roll_no || student.reg_no || student.uid?.slice(0, 8)}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="space-y-1">
-                                                <p className="text-xs font-black text-[#1e3a5f]">{student.branch}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{student.year}</p>
+                                                <p className="text-xs font-black text-[#1e3a5f]">{student.department || student.branch}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{student.batch || student.year}</p>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">

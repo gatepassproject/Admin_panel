@@ -1,0 +1,4 @@
+roll_no,first_name,last_name,phone,email,dob,gender,blood_group,department,batch,father_name,guardian_phone,address,password
+2201673,Rahul,Kumar,9876543210,rahul.kumar@example.com,2004-05-15,Male,O+,Computer Science,2022-2026,Mr. Rajesh Kumar,9876543211,123 Main Street Delhi,Student@123
+2201674,Priya,Sharma,9876543212,priya.sharma@example.com,2004-08-20,Female,B+,Computer Science,2022-2026,Mr. Vijay Sharma,9876543213,456 Park Avenue Mumbai,Student@123
+2201675,Amit,Singh,9876543214,,2004-03-10,Male,A+,Computer Science,2022-2026,Mr. Ravi Singh,9876543215,789 Lake Road Bangalore,

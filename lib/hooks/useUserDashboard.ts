@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export function useUserDashboard(role: string, initialProject: '1' | '2' = '1') {
+export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', deptFilter?: string) {
     const [users, setUsers] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [project, setProject] = React.useState<'1' | '2'>(initialProject);
@@ -24,9 +24,16 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1') 
             const department = getDepartment();
 
             // Build query params
-            let url = `/api/users?role=${role}&project=${project}`;
-            if (department) {
-                url += `&department=${department}`;
+            let url = `/api/users?role=${role}&project=${project}&userRole=${role}`;
+
+            // Use the provided filter if present and not "All Departments"
+            // Otherwise fallback to cookie department
+            const effectiveDept = (deptFilter && deptFilter !== 'All Departments')
+                ? deptFilter
+                : (deptFilter === 'All Departments' ? null : department);
+
+            if (effectiveDept) {
+                url += `&department=${effectiveDept}`;
             }
 
             const response = await fetch(url);
@@ -48,7 +55,8 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1') 
         if (!confirm('Are you sure you want to delete this record? This action cannot be undone.')) return;
         try {
             const department = getDepartment();
-            let url = `/api/users?uid=${uid}&project=${project}`;
+            const encodedUid = encodeURIComponent(uid);
+            let url = `/api/users?uid=${encodedUid}&project=${project}&userRole=${role}`;
             if (department) {
                 url += `&department=${department}`;
             }
@@ -68,7 +76,7 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1') 
 
     React.useEffect(() => {
         fetchUsers();
-    }, [project, role]);
+    }, [project, role, deptFilter]);
 
     return {
         users,

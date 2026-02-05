@@ -12,7 +12,8 @@ import {
     Briefcase,
     Zap,
     Clock,
-    Hash
+    Hash,
+    GraduationCap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,8 +30,9 @@ export function ViewUserModal({ user, isOpen, onClose }: ViewUserModalProps) {
         { label: 'Official Role', value: user.role, icon: Shield, color: 'text-indigo-600 bg-indigo-50/50', accent: 'indigo' },
         { label: 'Email Address', value: user.email, icon: Mail, color: 'text-rose-600 bg-rose-50/50', accent: 'rose' },
         { label: 'Contact Number', value: user.phone || user.guardian_phone || 'Not Provided', icon: Phone, color: 'text-emerald-600 bg-emerald-50/50', accent: 'emerald' },
-        { label: 'Department / Unit', value: user.department || user.dept || 'Not Assigned', icon: Briefcase, color: 'text-amber-600 bg-amber-50/50', accent: 'amber' },
-        { label: 'Primary Identifier', value: user.student_id || user.faculty_id || user.uid, icon: Hash, color: 'text-blue-600 bg-blue-50/50', accent: 'blue' },
+        { label: 'Department / Unit', value: user.department || user.dept || user.branch || 'Not Assigned', icon: Briefcase, color: 'text-amber-600 bg-amber-50/50', accent: 'amber' },
+        { label: 'Roll Number', value: user.roll_no || user.student_id || user.reg_no || 'N/A', icon: Hash, color: 'text-blue-600 bg-blue-50/50', accent: 'blue' },
+        { label: 'Batch / Year', value: user.batch || user.year || 'N/A', icon: GraduationCap, color: 'text-purple-600 bg-purple-50/50', accent: 'purple' },
         { label: 'Current Status', value: user.status || 'Inside', icon: Zap, color: 'text-violet-600 bg-violet-50/50', accent: 'violet', isStatus: true },
         { label: 'Registration Date', value: user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Pending', icon: Clock, color: 'text-slate-600 bg-slate-50/50', accent: 'slate' },
         { label: 'Permanent Address', value: user.address || 'No address recorded in the system.', icon: MapPin, color: 'text-slate-600 bg-slate-50/50', accent: 'slate', fullWidth: true },

@@ -23,6 +23,9 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 
 export default function FacultyPage() {
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [selectedDept, setSelectedDept] = React.useState('All Departments');
+
     const {
         users: faculty,
         isLoading,
@@ -33,10 +36,7 @@ export default function FacultyPage() {
         setIsViewModalOpen,
         handleDelete,
         handleView
-    } = useUserDashboard('faculty');
-
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDept, setSelectedDept] = React.useState('All Departments');
+    } = useUserDashboard('faculty', '1', selectedDept);
 
     const filteredFaculty = faculty.filter(f =>
         (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

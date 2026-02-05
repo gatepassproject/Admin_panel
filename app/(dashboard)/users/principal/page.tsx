@@ -22,6 +22,8 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 
 export default function PrincipalPage() {
+    const [searchTerm, setSearchTerm] = React.useState('');
+
     const {
         users: principals,
         isLoading,
@@ -32,9 +34,7 @@ export default function PrincipalPage() {
         setIsViewModalOpen,
         handleDelete,
         handleView
-    } = useUserDashboard('principal');
-
-    const [searchTerm, setSearchTerm] = React.useState('');
+    } = useUserDashboard('principal', '1');
 
     const filteredPrincipals = principals.filter(f =>
     (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

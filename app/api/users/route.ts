@@ -1,27 +1,45 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { db1, auth1, db2, auth2 } from '@/lib/firebase-admin';
-import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode } from '@/lib/constants/departments';
+import { db1, db2, adminAuth } from '@/lib/firebase-admin';
+import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
 
 const PROJECT_GATEPASS = '1';
 const PROJECT_IOT = '2';
 
 function getFirebaseInstances(project: string | null) {
-    if (project === PROJECT_IOT) {
-        return { db: db2, auth: auth2 };
-    }
-    return { db: db1, auth: auth1 };
+    // Both projects use the same Firebase instance (gatepass-49d43)
+    // but access different collections based on project parameter
+    return { db: project === PROJECT_IOT ? db2 : db1, auth: adminAuth };
 }
 
-function getCollectionName(project: string | null, department: DepartmentCode | null = null) {
-    const baseCollection = project === PROJECT_IOT ? 'web_admins' : 'users';
+function getCollectionName(project: string | null, department: DepartmentCode | null = null, role: string | null = null) {
+    // Project 2 (Web/IoT) uses web_admins collections
+    if (project === PROJECT_IOT) {
+        const baseCollection = 'web_admins';
+        // If department is provided, return department-scoped collection
+        if (department && isValidDepartmentCode(department)) {
+            return getDepartmentCollectionName(baseCollection, department);
+        }
+        return baseCollection;
+    }
 
-    // If department is provided, return department-scoped collection
-    if (department && isValidDepartmentCode(department)) {
-        return getDepartmentCollectionName(baseCollection, department);
+    // Project 1 (GatePass) uses role-specific collections with 'app_' prefix
+    if (role) {
+        const roleMap: Record<string, string> = {
+            'student': 'app_student',
+            'faculty': 'app_faculty',
+            'hod': 'app_hod',
+            'principal': 'app_principal',
+            'parent': 'app_parent',
+            'security': 'app_security',
+            'admission': 'app_admission',
+            'higher_authority': 'app_higher_authority',
+            'staff': 'app_staff'
+        };
+        return roleMap[role.toLowerCase()] || 'users'; // fallback
     }
 
     // Fallback to base collection for backward compatibility
-    return baseCollection;
+    return 'users';
 }
 
 const ROLE_HIERARCHY: Record<string, string[]> = {
@@ -76,29 +94,29 @@ export async function GET(request: NextRequest) {
         const requester = getRequesterIdentity(request);
 
         // ENFORCE DEPARTMENT ISOLATION
-        // If requester is NOT a global admin, FORCE the query to their department
-        // We consider 'admin' as the only truly global role that can potentially see all if properly configured.
-        // However, even 'admin' might be scoped if they logged in with a specific department context.
-        // For strict isolation as requested:
+        // Only force department isolation for roles that are NOT global admins
+        // 'admin', 'master_admin', and 'management' can see all departments IF they choose.
+        const isGlobalRole = ['admin', 'master_admin', 'management'].includes(requester.role);
 
-        if (requester.role !== 'admin') {
+        if (!isGlobalRole) {
             if (requester.department) {
-                // Force department to match requester's department
+                // Force department to match requester's department for Principal, HOD, Faculty, etc.
                 department = requester.department;
             } else {
-                // If no department in cookie but not admin, something is wrong. Block access or restrict to base?
-                // Let's restrict to 'no department' which naturally isolates them from department collections.
+                // If they have no department but aren't global, restrict them
                 department = null;
             }
         } else {
-            // Requester IS 'admin'. 
-            // If they passed a department param, use it. 
-            // If they didn't, they might be accessing "Web Universal Control" (project 2, no dept).
-            // So we respect the `department` param (or lack thereof) for 'admin'.
+            // Requester IS a global role.
+            // If they didn't pass a department param, or passed 'All Departments', keep department as null/original.
+            // This allows them to see everything.
         }
 
         if (uid) {
-            const collectionName = getCollectionName(project, department);
+            // When fetching by UID, we need to know the role to find the right collection
+            // Try to get role from query params or search across common collections
+            const userRole = searchParams.get('userRole');
+            const collectionName = getCollectionName(project, department, userRole);
             const doc = await db.collection(collectionName).doc(uid).get();
 
             if (!doc.exists) {
@@ -119,43 +137,84 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ id: doc.id, ...userData });
         }
 
-        const collectionName = getCollectionName(project, department);
-        let usersQuery: any = db.collection(collectionName);
+        // For Project 1, if role is specified, query role-specific collections
+        // For Project 2, use department-scoped web_admins collections
+        if (project === PROJECT_GATEPASS && role) {
+            const requestedRoles = role.split(',');
+            const allUsers: any[] = [];
 
-        // Apply role filter based on hierarchy if not admin
-        if (requester.role !== 'admin') {
-            const manageableRoles = ROLE_HIERARCHY[requester.role] || [];
-            if (role) {
-                const requestedRoles = role.split(',');
-                const filteredRoles = requestedRoles.filter(r => manageableRoles.includes(r));
-                if (filteredRoles.length === 0) {
-                    return NextResponse.json([]); // No manageable roles matched
+            // Query each role-specific collection
+            for (const singleRole of requestedRoles) {
+                console.log(`[DEBUG] Processing role: ${singleRole}, Project: ${project}, Requester: ${requester.role}`);
+
+                // Check if requester can manage this role
+                if (requester.role !== 'admin' && !canManageRole(requester.role, singleRole)) {
+                    continue; // Skip roles the requester can't manage
                 }
-                // @ts-ignore
-                usersQuery = usersQuery.where('role', 'in', filteredRoles);
-            } else {
-                // @ts-ignore
-                usersQuery = usersQuery.where('role', 'in', manageableRoles);
+
+                const collectionName = getCollectionName(project, department, singleRole);
+                let query: any = db.collection(collectionName);
+
+                // Apply department filter if needed
+                // Only filter by department if:
+                // 1. Department is explicitly provided in query params, OR
+                // 2. Requester is not an admin/master_admin (enforce isolation for lower roles)
+                if (department && isValidDepartmentCode(department) && !['admin', 'master_admin', 'management'].includes(requester.role)) {
+                    const deptInfo = getDepartmentByCode(department);
+                    const possibleValues: string[] = [department]; // e.g. 'CSE'
+
+                    if (deptInfo) {
+                        possibleValues.push(deptInfo.name); // e.g. 'Computer Science Engineering'
+
+                        // Add legacy/mobile app variations
+                        if (department === 'CSE') {
+                            possibleValues.push('Computer Science');
+                        } else if (department === 'IOT') {
+                            possibleValues.push('Internet of Things', 'IoT');
+                        }
+                    }
+
+                    query = query.where('department', 'in', possibleValues);
+                } else {
+                    // Fetching all (no department filter)
+                }
+
+                const snapshot = await query.get();
+
+                const users = snapshot.docs
+                    .filter((doc: any) => doc.id !== 'README')
+                    .map((doc: any) => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            uid: doc.id,
+                            ...data
+                        };
+                    });
+
+                allUsers.push(...users);
             }
-        } else if (role) {
-            const roles = role.split(',');
-            if (roles.length > 1) {
-                // @ts-ignore
-                usersQuery = usersQuery.where('role', 'in', roles);
-            } else {
-                usersQuery = usersQuery.where('role', '==', role);
-            }
+
+            return NextResponse.json(allUsers);
         }
 
+        // Fallback to old logic for Project 2 or when no role specified
+        const collectionName = getCollectionName(project, department, role);
+
+        let usersQuery: any = db.collection(collectionName);
+
         const snapshot = await usersQuery.get();
-        const users = snapshot.docs.map((doc: any) => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                uid: doc.id,
-                ...data
-            };
-        });
+
+        const users = snapshot.docs
+            .filter((doc: any) => doc.id !== 'README')
+            .map((doc: any) => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    uid: doc.id,
+                    ...data
+                };
+            });
 
         return NextResponse.json(users);
     } catch (error: any) {
@@ -228,23 +287,30 @@ export async function POST(request: NextRequest) {
 
         const { email, password, full_name, role, ...rest } = userDataRaw;
 
+        // CRITICAL FIX: Trim all string inputs to prevent Auth mismatches
+        const trimmedEmail = email?.trim();
+        const trimmedFullName = full_name?.trim();
+        const trimmedPassword = password?.trim();
+        const trimmedRollNo = rest.roll_no?.trim();
+        const trimmedPhone = rest.phone?.trim();
+
         if (!canManageRole(requester.role, role)) {
             return NextResponse.json({ error: 'Permission denied for this role creation' }, { status: 403 });
         }
 
-        if (!full_name || !role) {
+        if (!trimmedFullName || !role) {
             return NextResponse.json({ error: 'Full name and role are required' }, { status: 400 });
         }
 
         // Smart format email
-        let finalEmail = email;
+        let finalEmail = trimmedEmail;
         const officialRoles = ['student', 'faculty', 'hod', 'principal', 'admission', 'higher_authority', 'security', 'staff'];
 
         if (!finalEmail || !finalEmail.includes('@')) {
-            const id = email || rest.id || rest.student_id;
+            const id = trimmedEmail || rest.id || rest.student_id || trimmedRollNo;
 
             if (!id) {
-                return NextResponse.json({ error: 'Email or ID is required' }, { status: 400 });
+                return NextResponse.json({ error: 'Email, Roll No, or ID is required' }, { status: 400 });
             }
 
             if (role === 'parent') {
@@ -262,15 +328,15 @@ export async function POST(request: NextRequest) {
         // 1. Create user in Firebase Auth
         const userRecord = await auth.createUser({
             email: finalEmail,
-            password: password || 'Password123!',
-            displayName: full_name,
+            password: trimmedPassword || 'Password123!',
+            displayName: trimmedFullName,
         });
 
         // 2. Prepare structured user document
         const userData: any = {
             uid: userRecord.uid,
             email: finalEmail,
-            full_name,
+            full_name: trimmedFullName,
             role,
             department,
             status: 'Inside',
@@ -281,15 +347,32 @@ export async function POST(request: NextRequest) {
         // Role-specific field mapping (Keep existing mapping logic)
         Object.assign(userData, rest);
         if (role === 'student') {
-            userData.student_id = rest.student_id || rest.id;
+            userData.student_id = rest.student_id || rest.id || trimmedRollNo;
+            userData.roll_no = trimmedRollNo || rest.student_id; // Ensure roll_no is also set
             userData.department = department; // Ensure consistent
+            userData.phone = trimmedPhone;
         }
         // ... (truncated simple mapping for brevity, rest is already merged)
 
-        const collectionName = getCollectionName(project, department);
+        // 3. Save to role-specific collection (e.g., app_student)
+        const collectionName = getCollectionName(project, department, role);
         await db.collection(collectionName).doc(userRecord.uid).set(userData);
 
+        // 4. CRITICAL FIX: Create "Source of Truth" entry in `users` collection
+        // The mobile app expects this to determine the user's role (StudentLoginScreen.js line 95)
+        const usersCollectionEntry = {
+            uid: userRecord.uid,
+            email: finalEmail,
+            role,
+            full_name: trimmedFullName,
+            created_at: new Date().toISOString(),
+        };
+        await db.collection('users').doc(userRecord.uid).set(usersCollectionEntry);
+
+        console.log(`✅ Created user in both '${collectionName}' and 'users' collections`);
+
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
+
     } catch (error: any) {
         console.error('Error creating user:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -323,7 +406,9 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
         }
 
-        const collectionName = getCollectionName(project, department);
+        // Get the user's role to determine collection
+        const userRole = updates.role || bodyDepartment; // If role is being updated, use new role
+        const collectionName = getCollectionName(project, department, userRole);
         const targetDoc = await db.collection(collectionName).doc(uid).get();
 
         if (!targetDoc.exists) {
@@ -331,6 +416,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const targetData = targetDoc.data() || {};
+        const actualRole = targetData.role; // Use existing role from document
 
         if (!canManageRole(requester.role, targetData.role) && uid !== targetDoc.id) {
             return NextResponse.json({ error: 'Permission denied to update this user' }, { status: 403 });
@@ -350,7 +436,9 @@ export async function PUT(request: NextRequest) {
         const { password, ...firestoreUpdates } = updates;
         firestoreUpdates.updated_at = new Date().toISOString();
 
-        await db.collection(collectionName).doc(uid).update(firestoreUpdates);
+        // Use the collection based on the actual role (not the updated one)
+        const updateCollectionName = getCollectionName(project, department, actualRole);
+        await db.collection(updateCollectionName).doc(uid).update(firestoreUpdates);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -386,7 +474,10 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
         }
 
-        const collectionName = getCollectionName(project, department);
+        // Need to determine the user's role to find the right collection
+        // Try common collections if role not specified
+        const userRole = searchParams.get('userRole');
+        const collectionName = getCollectionName(project, department, userRole);
         const targetDoc = await db.collection(collectionName).doc(uid).get();
 
         if (targetDoc.exists) {
@@ -394,13 +485,16 @@ export async function DELETE(request: NextRequest) {
             if (!canManageRole(requester.role, targetData.role)) {
                 return NextResponse.json({ error: 'Permission denied to delete this user' }, { status: 403 });
             }
+
+            // 1. Delete from Authentication
+            await auth.deleteUser(uid);
+
+            // 2. Delete from Firestore (use role-specific collection)
+            const deleteCollectionName = getCollectionName(project, department, targetData.role);
+            await db.collection(deleteCollectionName).doc(uid).delete();
+        } else {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
-
-        // 1. Delete from Authentication
-        await auth.deleteUser(uid);
-
-        // 2. Delete from Firestore
-        await db.collection(collectionName).doc(uid).delete();
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

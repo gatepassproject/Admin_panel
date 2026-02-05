@@ -21,6 +21,9 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 
 export default function HODPage() {
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [selectedDept, setSelectedDept] = React.useState('All');
+
     const {
         users,
         isLoading,
@@ -31,10 +34,7 @@ export default function HODPage() {
         setIsViewModalOpen,
         handleDelete,
         handleView
-    } = useUserDashboard('hod');
-
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDept, setSelectedDept] = React.useState('All');
+    } = useUserDashboard('hod', '1', selectedDept === 'All' ? 'All Departments' : selectedDept);
 
     const filteredFaculty = users.filter(f =>
         (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

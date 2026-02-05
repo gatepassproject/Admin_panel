@@ -29,26 +29,30 @@ export default function BulkOperationsPage() {
         const lines = text.split(/\r?\n/).filter(line => line.trim());
         if (lines.length < 2) return [];
 
-        // Remove BOM if present (common in Excel CSVs) and split headers
-        const rawHeaders = lines[0].replace(/^\uFEFF/, '').split(',');
-        const headers = rawHeaders.map(h => h.trim().toLowerCase());
+        // Remove BOM if present (common in Excel CSVs)  
+        const firstLine = lines[0].replace(/^\uFEFF/, '');
+        const headers = firstLine.split(',').map(h => h.trim());
 
-        console.log('Detected Headers:', headers);
+        console.log('Detected CSV Headers:', headers);
 
-        return lines.slice(1).map(line => {
+        // Parse data rows
+        const students = lines.slice(1).map((line, index) => {
             const values = line.split(',').map(v => v.trim());
             const record: any = {};
 
             headers.forEach((header, i) => {
-                // Normalize headers to expected structure
-                let key = header.replace(/[\s_]+/g, '_'); // Replace spaces with underscores
-                if (key === 'roll_no' || key === 'id' || key === 'reg_no') key = 'registration_no';
-                if (key === 'name' || key === 'student_name') key = 'full_name';
-
-                record[key] = values[i];
+                // Keep original header names, just trim them
+                record[header] = values[i] || '';
             });
+
             return record;
+        }).filter(record => {
+            // Filter out empty rows (all values are empty)
+            return Object.values(record).some(val => val !== '');
         });
+
+        console.log(`Parsed ${students.length} student records`);
+        return students;
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +84,7 @@ export default function BulkOperationsPage() {
 
                 if (res.ok) {
                     setUploadProgress(100);
-                    setStats({ success: data.processed, total: students.length });
+                    setStats({ success: data.processed, total: data.total || students.length });
                     setTimeout(() => {
                         setIsUploading(false);
                         setHasCompleted(true);
@@ -118,8 +122,8 @@ export default function BulkOperationsPage() {
                     <p className="text-slate-500 font-medium">Upload CSV or Excel files to register hundreds of students or staff at once.</p>
                 </div>
                 <a
-                    href="/templates/student_onboarding_template.csv"
-                    download
+                    href="/templates/student_bulk_upload_template.csv"
+                    download="student_bulk_upload_template.csv"
                     className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                 >
                     <Download className="w-4 h-4 text-[#c32026]" />
@@ -186,12 +190,17 @@ export default function BulkOperationsPage() {
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Batch Processed!</h3>
                                     <p className="text-sm text-slate-500 font-medium mt-2 text-center">
-                                        <span className="text-emerald-600 font-bold">{stats.success} students</span> successfully registered across all systems.
+                                        <span className="text-emerald-600 font-bold">{stats.success} of {stats.total} students</span> successfully registered
                                     </p>
+                                    {(stats.total - stats.success) > 0 && (
+                                        <p className="text-xs text-red-600 font-medium mt-1">
+                                            {stats.total - stats.success} students failed (check console for details)
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="flex gap-4 justify-center">
                                     <button onClick={() => setHasCompleted(false)} className="px-6 py-2.5 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-all font-bold">New Upload</button>
-                                    <Link href="/users/students" className="px-6 py-2.5 bg-[#1e3a5f] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1e3a5f]/90 transition-all font-bold">View Data</Link>
+                                    <Link href="/users/students" className="px-6 py-2.5 bg-[#1e3a5f] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1e3a5f]/90 transition-all font-bold">View Students</Link>
                                 </div>
                             </div>
                         )}
