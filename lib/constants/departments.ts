@@ -141,6 +141,13 @@ export const DEPARTMENTS = {
         name: 'Multimedia',
         category: 'Media'
     },
+
+    // Global Administration
+    CAMPUS: {
+        code: 'CAMPUS',
+        name: 'Campus Management / Administration',
+        category: 'Administration'
+    },
 } as const;
 
 export type DepartmentCode = keyof typeof DEPARTMENTS;

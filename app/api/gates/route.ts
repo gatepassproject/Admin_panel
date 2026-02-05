@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { db2 } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase-web';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 export async function GET() {
-    if (!db2) {
-        console.warn('Firebase Admin not initialized, returning mock gates');
+    if (!db) {
+        console.warn('Firebase Client not initialized, returning mock gates');
         const { mockGates } = await import('../mockData');
         return NextResponse.json(mockGates);
     }
 
     try {
-        const snapshot = await db2.collection('gate_status').get();
+        const snapshot = await getDocs(collection(db, 'gate_status'));
         const gates = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
 
         if (!id) throw new Error('Gate ID is required');
 
-        await db2.collection('gate_status').doc(id).set({
+        await setDoc(doc(db, 'gate_status', id), {
             name,
             status,
             last_active: new Date().toISOString(),

@@ -1,74 +1,46 @@
-import admin from 'firebase-admin';
+import * as admin from 'firebase-admin';
 
-// Helper to get or initialize a named Firebase app
-function getApp(name: string, config: any) {
-  const existingApp = admin.apps.find(app => app?.name === name);
-  if (existingApp) return existingApp;
+// Re-use initialization logic for server environments
+if (!admin.apps.length) {
+    try {
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        // Handle cases where private key might be quoted or have escaped newlines
+        const formattedPrivateKey = privateKey ? privateKey.replace(/\\n/g, '\n') : undefined;
 
-  try {
-    const app = admin.initializeApp(config, name);
-    // Add gRPC keepalive and timeout settings for network resilience
-    const db = admin.firestore(app);
-    db.settings({
-      ignoreUndefinedProperties: true,
-      // Increase timeouts for poor network conditions
-    });
-    console.log(`Firebase Admin: App "${name}" initialized successfully`);
-    return app;
-  } catch (error) {
-    console.error(`Firebase Admin: Critical error initializing app "${name}":`, error);
-    return null;
-  }
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: formattedPrivateKey,
+            }),
+            databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+        });
+        console.log('✅ Firebase Admin Initialized in API Runtime');
+    } catch (error) {
+        console.error('❌ Firebase Admin Initialization Error:', error);
+    }
 }
 
-const gatepassConfig = {
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID_1,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL_1,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY_1?.replace(/\\n/g, '\n'),
-  }),
-  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_1}.firebaseio.com`
-};
+export const adminAuth = admin.auth();
+export const adminDb = admin.firestore();
 
-const iotConfig = {
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID_2,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL_2,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY_2?.replace(/\\n/g, '\n'),
-  }),
-  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID_2}.firebaseio.com`
-};
-
-const gatepassApp = getApp('gatepass', gatepassConfig);
-const iotApp = getApp('iot', iotConfig);
-
-export const db1 = gatepassApp ? admin.firestore(gatepassApp) : null;
-export const db2 = iotApp ? admin.firestore(iotApp) : null;
-export const auth1 = gatepassApp ? admin.auth(gatepassApp) : null;
-export const auth2 = iotApp ? admin.auth(iotApp) : null;
+// Legacy compatibility exports (Unified System)
+export const db1 = adminDb; // Points to shared gatepass-49d43 Firestore
+export const db2 = adminDb; // Points to shared gatepass-49d43 Firestore
 
 /**
- * Extract department code from request headers
- * @param request - Next.js Request object
- * @returns Department code or null
+ * Professional Helper: Extract department from request cookies/context
  */
 export function getDepartmentFromRequest(request: Request): string | null {
-  return request.headers.get('x-user-department');
+    try {
+        const cookiesStr = request.headers.get('cookie') || '';
+        const departmentCookie = cookiesStr
+            .split('; ')
+            .find(row => row.startsWith('user_department='));
+
+        return departmentCookie ? departmentCookie.split('=')[1] : null;
+    } catch (e) {
+        console.error('⚠️ Failed to extract department from request headers:', e);
+        return null;
+    }
 }
-
-/**
- * Extract department code from cookies
- * @param cookieHeader - Cookie header string
- * @returns Department code or null
- */
-export function getDepartmentFromCookies(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
-
-  const departmentCookie = cookieHeader
-    .split('; ')
-    .find(row => row.startsWith('user_department='));
-
-  return departmentCookie ? departmentCookie.split('=')[1] : null;
-}
-
-export { admin };

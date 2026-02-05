@@ -18,10 +18,11 @@ import {
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-export default function AddAdminPage() {
+export default function AddWebAdminPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
-    const project = searchParams.get('project') || '1';
+    // STRICTLY ENFORCE PROJECT 2 for Web Admins
+    const project = '2';
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isLoadingUser, setIsLoadingUser] = React.useState(!!uid);
@@ -55,6 +56,8 @@ export default function AddAdminPage() {
                         email: data.email || '',
                         phone: data.phone || '',
                         designation: data.designation || 'System Admin',
+                        role: data.role || 'admin',
+                        dept: data.department || '',
                     });
                 } catch (err: any) {
                     setError('Error loading user data');
@@ -64,7 +67,7 @@ export default function AddAdminPage() {
             };
             fetchUser();
         }
-    }, [uid, project]);
+    }, [uid]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,7 +79,8 @@ export default function AddAdminPage() {
             const body = {
                 ...formData,
                 full_name: `${formData.first_name} ${formData.last_name}`,
-                project,
+                project, // Enforce Project 2
+                department: formData.dept, // Ensure department is passed explicitly
                 ...(uid ? { uid } : {})
             };
 
@@ -99,8 +103,8 @@ export default function AddAdminPage() {
                     email: '',
                     password: '',
                     phone: '',
-                    dept: 'Administration',
-                    designation: 'System Admin',
+                    dept: '',
+                    designation: '',
                     role: 'admin',
                     gender: 'Male'
                 });
@@ -134,17 +138,17 @@ export default function AddAdminPage() {
                         Back to Control Center
                     </Link>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                        {uid ? 'Edit' : 'Add'} Master Admin
+                        {uid ? 'Edit' : 'Add'} Web Admin
                     </h2>
                     <p className="text-slate-500 font-medium">
-                        {uid ? `Updating Profile: ${formData.first_name}` : 'Register a new System Admin account.'}
+                        {uid ? `Updating Profile: ${formData.first_name}` : 'Create a new Web Portal administrator (Project 2).'}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-bold rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all disabled:opacity-50"
                     >
                         {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : (uid ? <Save className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />)}
                         <span>{isSubmitting ? 'Processing...' : (uid ? 'Save Changes' : 'Create Account')}</span>
@@ -159,7 +163,7 @@ export default function AddAdminPage() {
                     </div>
                     <div>
                         <p className="font-black text-sm uppercase tracking-wider">Success!</p>
-                        <p className="text-sm font-medium opacity-90">Account has been {uid ? 'updated' : 'created'} successfully.</p>
+                        <p className="text-sm font-medium opacity-90">Web Admin account has been {uid ? 'updated' : 'created'} successfully.</p>
                     </div>
                 </div>
             )}
@@ -180,7 +184,7 @@ export default function AddAdminPage() {
                 {/* Module: Professional Information */}
                 <div className="dashboard-card p-8">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-xl flex items-center justify-center">
                             <User className="w-5 h-5" />
                         </div>
                         <div>
@@ -190,24 +194,24 @@ export default function AddAdminPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 group hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
-                            <div className="w-24 h-24 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors relative overflow-hidden">
+                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 group hover:border-[#1e3a5f] hover:bg-[#1e3a5f]/5 transition-all cursor-pointer">
+                            <div className="w-24 h-24 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#1e3a5f] transition-colors relative overflow-hidden">
                                 <Camera className="w-10 h-10" />
                             </div>
-                            <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-blue-600">Upload Photo</p>
+                            <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-[#1e3a5f]">Upload Photo</p>
                         </div>
 
                         <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">First Name <span className="text-red-500">*</span></label>
-                                <input required type="text" placeholder="e.g. John" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                <input required type="text" placeholder="e.g. John" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                     value={formData.first_name}
                                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Last Name <span className="text-red-500">*</span></label>
-                                <input required type="text" placeholder="e.g. Doe" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                <input required type="text" placeholder="e.g. Doe" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                     value={formData.last_name}
                                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                                 />
@@ -216,7 +220,7 @@ export default function AddAdminPage() {
                                 <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Phone Number <span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input required type="tel" placeholder="+91 98765 43210" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                    <input required type="tel" placeholder="+91 98765 43210" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                     />
@@ -243,7 +247,7 @@ export default function AddAdminPage() {
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Official Email <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input required type="email" placeholder="admin@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                <input required type="email" placeholder="admin@ctgroup.in" className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                     disabled={!!uid}
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -260,7 +264,7 @@ export default function AddAdminPage() {
                                     required={!uid}
                                     type="text"
                                     placeholder={uid ? "Leave blank to keep current" : "Minimum 8 characters"}
-                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 />
@@ -285,7 +289,7 @@ export default function AddAdminPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Department</label>
                             <select
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-700 cursor-pointer"
                                 value={formData.dept}
                                 onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
                             >
@@ -295,18 +299,38 @@ export default function AddAdminPage() {
                                 <option>Mechanical Engineering</option>
                                 <option>Electronics</option>
                                 <option>Civil Engineering</option>
+                                <option>Electrical Engineering</option>
+                                <option>AI_ML</option>
+                                <option>Biotechnology</option>
+                                <option>Biomedical</option>
+                                <option>Architecture</option>
+                                <option>Pharmacy</option>
+                                <option>Law</option>
+                                <option>Hotel Management</option>
+                                <option>Education</option>
+                                <option>Technology</option>
+                                <option>Applied Sciences</option>
+                                <option>Humanities</option>
+                                <option>Interior Design</option>
+                                <option>IoT</option>
+                                <option>Medical Lab</option>
+                                <option>Multimedia</option>
+                                <option>Pharmaceutical Sci</option>
+                                <option>Physiotherapy</option>
+                                <option>Tourism</option>
+                                <option>Web Technology</option>
                             </select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Designation</label>
-                            <input type="text" placeholder="e.g. System Admin" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                            <input type="text" placeholder="e.g. System Admin" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-medium text-slate-900"
                                 value={formData.designation}
                                 onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">System Role <span className="text-red-500">*</span></label>
-                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                            <select required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-700 cursor-pointer"
                                 value={formData.role}
                                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                             >
@@ -328,7 +352,7 @@ export default function AddAdminPage() {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-500/30 transition-all disabled:opacity-50"
+                        className="px-10 py-3 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-[#1e3a5f]/20 transition-all disabled:opacity-50"
                     >
                         {isSubmitting ? 'Processing...' : (uid ? 'Update Profile' : 'Complete Registration')}
                     </button>
@@ -337,4 +361,3 @@ export default function AddAdminPage() {
         </div>
     );
 }
-

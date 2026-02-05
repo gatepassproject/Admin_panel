@@ -68,37 +68,8 @@ export async function POST(request: Request) {
                     });
                 }
 
-                // 2. Project 2 (IoT)
-                let uid2 = '';
-                try {
-                    const user2 = await auth2.createUser({
-                        email,
-                        password,
-                        displayName: fullName,
-                    });
-                    uid2 = user2.uid;
-                    console.log(`Created user in Project 2: ${uid2}`);
-                } catch (e2: any) {
-                    if (e2.code === 'auth/email-already-exists') {
-                        const existingUser = await auth2.getUserByEmail(email);
-                        uid2 = existingUser.uid;
-                        console.log(`User already exists in Project 2: ${uid2}`);
-                    } else throw e2;
-                }
-
-                if (uid2) {
-                    await db2.collection('users').doc(uid2).set({
-                        uid: uid2,
-                        full_name: fullName,
-                        email,
-                        role: 'student',
-                        student_id: regNo,
-                        department: student.department || student.dept || 'General',
-                        status: 'Inside',
-                        created_at: new Date().toISOString(),
-                        ...student
-                    });
-                }
+                // Project 2 (IoT) - SKIPPED for Students as per strict data separation requirements
+                // Students primarily belong to Project 1 (GatePass App)
 
                 successCount++;
             } catch (err: any) {
