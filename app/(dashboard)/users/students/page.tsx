@@ -20,12 +20,29 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
-import { DEPARTMENTS, isValidDepartmentCode } from '@/lib/constants/departments';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { DEPARTMENTS, getAllDepartmentCodes, isValidDepartmentCode } from '@/lib/constants/departments';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function StudentsPage() {
+    const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDepartment, setSelectedDepartment] = React.useState('All Departments');
+    const [selectedDepartment, setSelectedDepartment] = React.useState('');
     const [selectedBatch, setSelectedBatch] = React.useState('All Batches');
+
+    // Default filter to user's department or first available if global
+    React.useEffect(() => {
+        if (currentUser) {
+            const departments = getAllDepartmentCodes();
+            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
+            if (!isGlobal && currentUser.department) {
+                setSelectedDepartment(currentUser.department);
+            } else if (isGlobal && !selectedDepartment && departments.length > 0) {
+                setSelectedDepartment(departments[0]);
+            }
+        }
+    }, [currentUser, selectedDepartment]);
 
     const {
         users: students,
@@ -36,7 +53,13 @@ export default function StudentsPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
     } = useUserDashboard('student', '1', selectedDepartment); // Pass selectedDepartment to enable dynamic fetching
 
     const filteredStudents = students.filter(s =>
@@ -44,12 +67,9 @@ export default function StudentsPage() {
             s.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.roll_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.reg_no?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedDepartment === 'All Departments' ||
-            (s.department || s.branch) === selectedDepartment ||
-            (s.department === 'Computer Science Engineering' && selectedDepartment === 'CSE') ||
-            (s.department === 'Internet of Things' && selectedDepartment === 'IOT') ||
-            (s.department === 'IoT' && selectedDepartment === 'IOT') ||
-            (s.department === 'Computer Science' && selectedDepartment === 'CSE')) &&
+        // Strict isolation is now handled at the API level via useUserDashboard(..., selectedDepartment)
+        // This local filter is just for additional safety
+        (selectedDepartment === '' || (s.department || s.branch) === selectedDepartment) &&
         (selectedBatch === 'All Batches' || (s.batch || s.year) === selectedBatch)
     );
 
@@ -104,13 +124,13 @@ export default function StudentsPage() {
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[140px]">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Department:</span>
                         <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
+                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer disabled:opacity-50"
                             value={selectedDepartment}
                             onChange={(e) => setSelectedDepartment(e.target.value)}
+                            disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
                         >
-                            <option>All Departments</option>
-                            {Object.values(DEPARTMENTS).map(dept => (
-                                <option key={dept.code} value={dept.code}>{dept.code}</option>
+                            {getAllDepartmentCodes().map(code => (
+                                <option key={code} value={code}>{code}</option>
                             ))}
                         </select>
                     </div>
@@ -253,6 +273,14 @@ export default function StudentsPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );

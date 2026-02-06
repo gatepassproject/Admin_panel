@@ -21,10 +21,28 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { DEPARTMENTS, getAllDepartmentCodes, isValidDepartmentCode } from '@/lib/constants/departments';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function FacultyPage() {
+    const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDept, setSelectedDept] = React.useState('All Departments');
+    const [selectedDept, setSelectedDept] = React.useState('');
+
+    // Default filter to user's department or first available if global
+    React.useEffect(() => {
+        if (currentUser) {
+            const departments = getAllDepartmentCodes();
+            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
+            if (!isGlobal && currentUser.department) {
+                setSelectedDept(currentUser.department);
+            } else if (isGlobal && !selectedDept && departments.length > 0) {
+                setSelectedDept(departments[0]);
+            }
+        }
+    }, [currentUser, selectedDept]);
 
     const {
         users: faculty,
@@ -35,14 +53,20 @@ export default function FacultyPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
     } = useUserDashboard('faculty', '1', selectedDept);
 
     const filteredFaculty = faculty.filter(f =>
         (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             f.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedDept === 'All Departments' || f.dept === selectedDept || f.department === selectedDept)
+        (selectedDept === '' || f.dept === selectedDept || f.department === selectedDept)
     );
 
     return (
@@ -89,15 +113,14 @@ export default function FacultyPage() {
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[200px]">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dept:</span>
                         <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
+                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer disabled:opacity-50"
                             value={selectedDept}
                             onChange={(e) => setSelectedDept(e.target.value)}
+                            disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
                         >
-                            <option>All Departments</option>
-                            <option>Computer Science</option>
-                            <option>Mechanical Engineering</option>
-                            <option>Electronics</option>
-                            <option>Civil Engineering</option>
+                            {getAllDepartmentCodes().map(code => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -222,6 +245,14 @@ export default function FacultyPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );

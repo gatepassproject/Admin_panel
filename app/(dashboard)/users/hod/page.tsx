@@ -19,10 +19,28 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { DEPARTMENTS, getAllDepartmentCodes } from '@/lib/constants/departments';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function HODPage() {
+    const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDept, setSelectedDept] = React.useState('All');
+    const [selectedDept, setSelectedDept] = React.useState('');
+
+    // Default filter to user's department or first available if global
+    React.useEffect(() => {
+        if (currentUser) {
+            const departments = getAllDepartmentCodes();
+            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
+            if (!isGlobal && currentUser.department) {
+                setSelectedDept(currentUser.department);
+            } else if (isGlobal && !selectedDept && departments.length > 0) {
+                setSelectedDept(departments[0]);
+            }
+        }
+    }, [currentUser, selectedDept]);
 
     const {
         users,
@@ -33,14 +51,20 @@ export default function HODPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
-    } = useUserDashboard('hod', '1', selectedDept === 'All' ? 'All Departments' : selectedDept);
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
+    } = useUserDashboard('hod', '1', selectedDept);
 
     const filteredFaculty = users.filter(f =>
         (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             f.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedDept === 'All' || f.dept === selectedDept)
+        (selectedDept === '' || f.dept === selectedDept)
     );
 
     return (
@@ -87,15 +111,14 @@ export default function HODPage() {
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[140px]">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dept:</span>
                         <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer"
+                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer disabled:opacity-50"
                             value={selectedDept}
                             onChange={(e) => setSelectedDept(e.target.value)}
+                            disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
                         >
-                            <option>All</option>
-                            <option>CS</option>
-                            <option>ME</option>
-                            <option>EC</option>
-                            <option>CE</option>
+                            {getAllDepartmentCodes().map(code => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -208,6 +231,14 @@ export default function HODPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );

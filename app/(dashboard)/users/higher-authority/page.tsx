@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 
 export default function HigherAuthorityPage() {
     const {
@@ -31,7 +32,13 @@ export default function HigherAuthorityPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
     } = useUserDashboard('higher_authority');
 
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -204,6 +211,14 @@ export default function HigherAuthorityPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );

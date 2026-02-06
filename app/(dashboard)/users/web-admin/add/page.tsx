@@ -17,12 +17,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { getAllDepartmentCodes, DEPARTMENTS, isValidDepartmentCode } from '@/lib/constants/departments';
+import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function AddWebAdminPage() {
     const searchParams = useSearchParams();
     const uid = searchParams.get('uid');
     // STRICTLY ENFORCE PROJECT 2 for Web Admins
     const project = '2';
+
+    const { user: currentUser } = useCurrentUser();
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isLoadingUser, setIsLoadingUser] = React.useState(!!uid);
@@ -39,6 +44,16 @@ export default function AddWebAdminPage() {
         role: 'admin',
         gender: 'Male'
     });
+
+    // Auto-fill and lock department if not global
+    React.useEffect(() => {
+        if (currentUser && !uid) {
+            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
+            if (!isGlobal && currentUser.department) {
+                setFormData(prev => ({ ...prev, dept: currentUser.department as string }));
+            }
+        }
+    }, [currentUser, uid]);
 
     React.useEffect(() => {
         if (uid) {
@@ -289,36 +304,17 @@ export default function AddWebAdminPage() {
                         <div className="space-y-2">
                             <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1">Department</label>
                             <select
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] outline-none transition-all font-bold text-slate-700 cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
                                 value={formData.dept}
                                 onChange={(e) => setFormData({ ...formData, dept: e.target.value })}
+                                disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
                             >
-                                <option value="">Select Department (Optional for Global)</option>
-                                <option>Administration</option>
-                                <option>Computer Science</option>
-                                <option>Mechanical Engineering</option>
-                                <option>Electronics</option>
-                                <option>Civil Engineering</option>
-                                <option>Electrical Engineering</option>
-                                <option>AI_ML</option>
-                                <option>Biotechnology</option>
-                                <option>Biomedical</option>
-                                <option>Architecture</option>
-                                <option>Pharmacy</option>
-                                <option>Law</option>
-                                <option>Hotel Management</option>
-                                <option>Education</option>
-                                <option>Technology</option>
-                                <option>Applied Sciences</option>
-                                <option>Humanities</option>
-                                <option>Interior Design</option>
-                                <option>IoT</option>
-                                <option>Medical Lab</option>
-                                <option>Multimedia</option>
-                                <option>Pharmaceutical Sci</option>
-                                <option>Physiotherapy</option>
-                                <option>Tourism</option>
-                                <option>Web Technology</option>
+                                <option value="">Select Department (Global)</option>
+                                {getAllDepartmentCodes().map(code => (
+                                    <option key={code} value={code}>
+                                        {code} - {DEPARTMENTS[code].name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div className="space-y-2">

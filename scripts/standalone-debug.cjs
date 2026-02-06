@@ -22,12 +22,18 @@ const db = admin.firestore();
 
 async function run() {
     console.log(`Checking project: ${projectId}`);
-    const snap = await db.collection('app_student').get();
-    console.log(`Total docs in app_student: ${snap.size}`);
-    snap.docs.forEach(doc => {
-        const data = doc.data();
-        console.log(`- [${doc.id}] ${data.full_name} | Dept: ${data.department} | Role: ${data.role}`);
-    });
+
+    const collections = ['app_security', 'add_security', 'app_student', 'add_student', 'app_faculty', 'add_faculty', 'add_facutly', 'users'];
+
+    for (const col of collections) {
+        const snap = await db.collection(col).get();
+        console.log(`\n--- Collection: ${col} (${snap.size} docs) ---`);
+        snap.docs.forEach(doc => {
+            const data = doc.data();
+            console.log(`- [${doc.id}] ${data.full_name || 'N/A'} | Dept: ${data.department} | Role: ${data.role}`);
+        });
+    }
+
     process.exit(0);
 }
 

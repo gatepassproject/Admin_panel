@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { db1, db2, adminAuth } from '@/lib/firebase-admin';
 import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
+import { getRequesterIdentity, getEffectiveDepartment, applyDepartmentFilter } from '@/lib/department-isolation';
 
 const PROJECT_GATEPASS = '1';
 const PROJECT_IOT = '2';
@@ -62,20 +63,7 @@ function canManageRole(requesterRole: string, targetRole: string) {
 }
 
 // Helper to securely get requester identity from cookies
-function getRequesterIdentity(request: NextRequest) {
-    const role = request.cookies.get('user_role')?.value || 'unknown';
-    const department = request.cookies.get('user_department')?.value as DepartmentCode | undefined;
-    const uid = request.cookies.get('session')?.value; // Assuming session cookie contains UID or session token
-
-    // In a real production app, we would verify the session token with Firebase Admin Auth
-    // For now, we rely on the httpOnly cookies set by the login process
-
-    return {
-        role,
-        department: isValidDepartmentCode(department || '') ? department : null,
-        uid
-    };
-}
+// MOVED TO lib/department-isolation.ts
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -92,25 +80,8 @@ export async function GET(request: NextRequest) {
 
     try {
         const requester = getRequesterIdentity(request);
-
-        // ENFORCE DEPARTMENT ISOLATION
-        // Only force department isolation for roles that are NOT global admins
-        // 'admin', 'master_admin', and 'management' can see all departments IF they choose.
-        const isGlobalRole = ['admin', 'master_admin', 'management'].includes(requester.role);
-
-        if (!isGlobalRole) {
-            if (requester.department) {
-                // Force department to match requester's department for Principal, HOD, Faculty, etc.
-                department = requester.department;
-            } else {
-                // If they have no department but aren't global, restrict them
-                department = null;
-            }
-        } else {
-            // Requester IS a global role.
-            // If they didn't pass a department param, or passed 'All Departments', keep department as null/original.
-            // This allows them to see everything.
-        }
+        const effectiveDept = getEffectiveDepartment(requester, searchParams.get('department'));
+        department = effectiveDept;
 
         if (uid) {
             // When fetching by UID, we need to know the role to find the right collection
@@ -153,30 +124,11 @@ export async function GET(request: NextRequest) {
                 }
 
                 const collectionName = getCollectionName(project, department, singleRole);
-                let query: any = db.collection(collectionName);
+                let query: FirebaseFirestore.Query = db.collection(collectionName);
 
                 // Apply department filter if needed
-                // Only filter by department if:
-                // 1. Department is explicitly provided in query params, OR
-                // 2. Requester is not an admin/master_admin (enforce isolation for lower roles)
-                if (department && isValidDepartmentCode(department) && !['admin', 'master_admin', 'management'].includes(requester.role)) {
-                    const deptInfo = getDepartmentByCode(department);
-                    const possibleValues: string[] = [department]; // e.g. 'CSE'
-
-                    if (deptInfo) {
-                        possibleValues.push(deptInfo.name); // e.g. 'Computer Science Engineering'
-
-                        // Add legacy/mobile app variations
-                        if (department === 'CSE') {
-                            possibleValues.push('Computer Science');
-                        } else if (department === 'IOT') {
-                            possibleValues.push('Internet of Things', 'IoT');
-                        }
-                    }
-
-                    query = query.where('department', 'in', possibleValues);
-                } else {
-                    // Fetching all (no department filter)
+                if (department) {
+                    query = applyDepartmentFilter(query, department);
                 }
 
                 const snapshot = await query.get();
@@ -198,8 +150,10 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(allUsers);
         }
 
+
         // Fallback to old logic for Project 2 or when no role specified
         const collectionName = getCollectionName(project, department, role);
+        console.log(`[DEBUG] GET Fallback: Project ${project}, Dept ${department}, Role ${role} -> Collection ${collectionName}`);
 
         let usersQuery: any = db.collection(collectionName);
 
@@ -237,15 +191,15 @@ export async function POST(request: NextRequest) {
         console.log('Requester:', JSON.stringify(requester, null, 2));
 
         // Enforce Department on Creation
-        if (requester.role !== 'admin') {
+        // If not in CAMPUS context, force the session's department even for Admins
+        if (requester.department !== 'CAMPUS') {
             if (!requester.department) {
                 return NextResponse.json({ error: 'You must be logged into a department to create users.' }, { status: 403 });
             }
-            // Force creation in requester's department
+            // Force creation in requester's session department
             department = requester.department;
         } else {
-            // Admin can specify department, or it defaults to their current context if null?
-            // Let's require department for clarity if not provided
+            // Campus Admin can specify department
             if (!department && requester.department) {
                 department = requester.department;
             }
@@ -388,7 +342,7 @@ export async function PUT(request: NextRequest) {
         let department = bodyDepartment;
 
         // Enforce Department
-        if (requester.role !== 'admin') {
+        if (requester.department !== 'CAMPUS') {
             department = requester.department;
         }
 
@@ -456,7 +410,7 @@ export async function DELETE(request: NextRequest) {
         let department = searchParams.get('department') as DepartmentCode | null;
 
         // Enforce Department
-        if (requester.role !== 'admin') {
+        if (requester.department !== 'CAMPUS') {
             department = requester.department || null;
         }
 
@@ -474,32 +428,101 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
         }
 
-        // Need to determine the user's role to find the right collection
-        // Try common collections if role not specified
-        const userRole = searchParams.get('userRole');
-        const collectionName = getCollectionName(project, department, userRole);
-        const targetDoc = await db.collection(collectionName).doc(uid).get();
+        // 1. Discovery Phase (Find Role & Department)
+        const requestedRole = searchParams.get('userRole');
+        const requestedDept = searchParams.get('department');
 
-        if (targetDoc.exists) {
-            const targetData = targetDoc.data() || {};
-            if (!canManageRole(requester.role, targetData.role)) {
-                return NextResponse.json({ error: 'Permission denied to delete this user' }, { status: 403 });
-            }
+        let targetData: any = null;
+        let primaryRole = requestedRole;
+        let primaryDept = requestedDept;
 
-            // 1. Delete from Authentication
-            await auth.deleteUser(uid);
-
-            // 2. Delete from Firestore (use role-specific collection)
-            const deleteCollectionName = getCollectionName(project, department, targetData.role);
-            await db.collection(deleteCollectionName).doc(uid).delete();
-        } else {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        // Try primary lookup first
+        if (primaryRole) {
+            const primaryColl = getCollectionName(project, (primaryDept as any) || '', primaryRole);
+            const doc = await db.collection(primaryColl).doc(uid).get();
+            if (doc.exists) targetData = doc.data();
         }
 
-        return NextResponse.json({ success: true });
+        // Fallback to central 'users' to find true metadata
+        if (!targetData) {
+            const userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+                targetData = userDoc.data();
+                primaryRole = targetData.role || primaryRole;
+                primaryDept = targetData.department || primaryDept;
+                console.log(`Discovery: Found user ${uid} in central 'users' collection. Role: ${primaryRole}, Dept: ${primaryDept}`);
+            }
+        }
+
+        // Project 2 special discovery
+        if (!targetData && project === PROJECT_IOT) {
+            const baseWebColl = 'web_admins';
+            const webDoc = await db.collection(baseWebColl).doc(uid).get();
+            if (webDoc.exists) {
+                targetData = webDoc.data();
+                primaryRole = targetData.role || 'admin';
+            }
+        }
+
+        // 2. Permission Check
+        if (targetData) {
+            if (!canManageRole(requester.role, targetData.role || primaryRole)) {
+                return NextResponse.json({ error: 'Permission denied to delete this user' }, { status: 403 });
+            }
+        }
+
+        // 3. Execution Phase (Exhaustive Cleanup)
+        const rolesToScrub = Array.from(new Set([primaryRole, targetData?.role, requestedRole].filter(Boolean)));
+
+        console.log(`--- Starting Global Cleanup for ${uid} ---`);
+
+        // A. Auth Cleanup
+        try {
+            await auth.deleteUser(uid);
+            console.log(`- Auth: Deleted user ${uid}`);
+        } catch (e: any) {
+            console.log(`- Auth: skipped (not found or custom ID: ${e.message})`);
+        }
+
+        // B. Role-specific scrub
+        for (const role of rolesToScrub) {
+            if (!role) continue;
+
+            // Standard 'app_'
+            const appColl = getCollectionName(project, (primaryDept as any) || '', role);
+            await db.collection(appColl).doc(uid).delete();
+            console.log(`- Firestore: Scrubbed ${appColl}`);
+
+            // Legacy 'add_'
+            const legacyColl = 'add_' + role.toLowerCase();
+            await db.collection(legacyColl).doc(uid).delete();
+            console.log(`- Firestore: Scrubbed ${legacyColl}`);
+
+            // Project 2 Department-specific (e.g., web_admins_CSE)
+            if (project === PROJECT_IOT && primaryDept && isValidDepartmentCode(primaryDept)) {
+                const scopedColl = `web_admins_${primaryDept}`;
+                await db.collection(scopedColl).doc(uid).delete();
+                console.log(`- Firestore: Scrubbed ${scopedColl}`);
+            }
+
+            // Project 2 Base (web_admins)
+            if (project === PROJECT_IOT) {
+                await db.collection('web_admins').doc(uid).delete();
+                console.log(`- Firestore: Scrubbed web_admins`);
+            }
+        }
+
+        // C. Final Source of Truth Cleanup
+        await db.collection('users').doc(uid).delete();
+        console.log(`- Firestore: Final cleanup of 'users' collection`);
+
+        return NextResponse.json({
+            success: true,
+            message: 'Unified global deletion performed successfully. All known locations scrubbed.'
+        });
+
     } catch (error: any) {
-        console.error('Error deleting user:', error);
+        console.error('CRITICAL: Unified Deletion Failed:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
-

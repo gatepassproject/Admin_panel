@@ -133,20 +133,21 @@ export default function DashboardPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [gateScans, setGateScans] = React.useState<{ [key: number]: number }>({});
 
-    React.useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const response = await fetch('/api/stats');
-                if (!response.ok) throw new Error('Failed to fetch stats');
-                const data = await response.json();
-                setStatsData(data);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const fetchStats = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch('/api/stats');
+            if (!response.ok) throw new Error('Failed to fetch stats');
+            const data = await response.json();
+            setStatsData(data);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    React.useEffect(() => {
         fetchStats();
         // Refresh every 30 seconds
         const interval = setInterval(fetchStats, 30000);

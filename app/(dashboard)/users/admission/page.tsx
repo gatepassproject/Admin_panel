@@ -19,8 +19,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 
 export default function AdmissionPage() {
+    const { user: currentUser } = useCurrentUser();
     const {
         users,
         isLoading,
@@ -30,8 +33,14 @@ export default function AdmissionPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
-    } = useUserDashboard('admission');
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
+    } = useUserDashboard('admission', '1', currentUser?.department || undefined);
 
     const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -190,6 +199,14 @@ export default function AdmissionPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );

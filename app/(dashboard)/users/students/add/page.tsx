@@ -234,7 +234,7 @@ export default function AddStudentPage() {
         e.preventDefault();
 
         // Validate all required fields
-        const fieldsToValidate = ['first_name', 'last_name', 'roll_no', 'phone', 'email', 'father_name', 'guardian_phone'];
+        const fieldsToValidate = ['first_name', 'last_name', 'roll_no', 'phone', 'father_name', 'guardian_phone'];
         if (!uid) fieldsToValidate.push('password');
 
         fieldsToValidate.forEach(field => {
@@ -533,10 +533,6 @@ export default function AddStudentPage() {
                                     <span className="font-bold text-slate-900">{formData.roll_no}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Email:</span>
-                                    <span className="font-bold text-slate-900 text-xs">{formData.email || emailPreview}</span>
-                                </div>
-                                <div className="flex justify-between">
                                     <span className="text-slate-500">Department:</span>
                                     <span className="font-bold text-slate-900">{formData.department}</span>
                                 </div>
@@ -594,10 +590,6 @@ export default function AddStudentPage() {
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Roll No:</span>
                                     <span className="font-bold text-slate-900">{formData.roll_no}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Email:</span>
-                                    <span className="font-bold text-slate-900 text-xs">{formData.email || emailPreview}</span>
                                 </div>
                             </div>
                             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6">
@@ -831,22 +823,6 @@ export default function AddStudentPage() {
                                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         />
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Personal / Official Email</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                            <Mail className="w-4 h-4" />
-                                        </div>
-                                        <input
-                                            type="email"
-                                            placeholder="e.g. rahul.kumar@example.com"
-                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-slate-800"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 pl-1 italic">Leave blank to auto-generate from Roll No (@ctgroup.in)</p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Date of Birth <span className="text-red-500">*</span></label>

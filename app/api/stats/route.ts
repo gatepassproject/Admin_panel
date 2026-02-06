@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db1, db2, getDepartmentFromRequest } from '@/lib/firebase-admin';
+import { db1, db2 } from '@/lib/firebase-admin';
 import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
+import { getRequesterIdentity, getEffectiveDepartment, applyDepartmentFilter } from '@/lib/department-isolation';
 
 export async function GET(request: Request) {
     // Check if DB is initialized (it might be null if env vars are missing)
@@ -11,24 +12,10 @@ export async function GET(request: Request) {
     }
 
     try {
-        // Get department and role from request headers (set by middleware/cookies)
-        const department = getDepartmentFromRequest(request) as DepartmentCode | null;
+        const requester = getRequesterIdentity(request);
+        const department = getEffectiveDepartment(requester, null);
 
-        // Extract role from cookies
-        const cookiesStr = request.headers.get('cookie') || '';
-        const roleCookie = cookiesStr.split('; ').find(row => row.startsWith('user_role='));
-        const userRole = roleCookie ? roleCookie.split('=')[1] : null;
-
-        // Expanded visibility for institutional leaders
-        // admin: System Administrator
-        // principal: College Head
-        // higher_authority: Management
-        const isManagement = userRole === 'admin' || userRole === 'principal' || userRole === 'higher_authority';
-
-        const shouldFilter = department &&
-            department !== 'CAMPUS' &&
-            !isManagement &&
-            isValidDepartmentCode(department);
+        const shouldFilter = !!department;
 
         // 1. Get Student Count from App DB (Project 1)
         // Check both 'app_student' and 'add_student' (mentioned by user)
@@ -39,14 +26,7 @@ export async function GET(request: Request) {
             let studentsQuery: FirebaseFirestore.Query = db1.collection(colName);
             // Use refined shouldFilter logic
             if (shouldFilter) {
-                const deptInfo = getDepartmentByCode(department!);
-                const possibleValues: string[] = [department]; // e.g. 'CSE'
-
-                if (deptInfo) {
-                    possibleValues.push(deptInfo.name); // e.g. 'Computer Science Engineering'
-                    if (department === 'CSE') possibleValues.push('Computer Science');
-                }
-                studentsQuery = studentsQuery.where('department', 'in', possibleValues);
+                studentsQuery = applyDepartmentFilter(studentsQuery, department!);
             }
             const snapshot = await studentsQuery.get();
             studentsCount += snapshot.docs.filter(doc => doc.id !== 'README').length;
@@ -61,14 +41,7 @@ export async function GET(request: Request) {
             let query: FirebaseFirestore.Query = db1.collection(collectionName);
             // Use refined shouldFilter logic
             if (shouldFilter) {
-                const deptInfo = getDepartmentByCode(department!);
-                const possibleValues: string[] = [department]; // e.g. 'CSE'
-
-                if (deptInfo) {
-                    possibleValues.push(deptInfo.name); // e.g. 'Computer Science Engineering'
-                    if (department === 'CSE') possibleValues.push('Computer Science');
-                }
-                query = query.where('department', 'in', possibleValues);
+                query = applyDepartmentFilter(query, department!);
             }
             const snapshot = await query.get();
             facultyCount += snapshot.docs.filter(doc => doc.id !== 'README').length;
@@ -100,8 +73,13 @@ export async function GET(request: Request) {
         const recentPassesSnapshot = await recentPassesQuery.get();
         let recentDocs = recentPassesSnapshot.docs;
 
-        if (Boolean(shouldFilter)) {
-            recentDocs = recentDocs.filter(doc => doc.data().department === department);
+        if (shouldFilter) {
+            recentDocs = recentDocs.filter(doc => {
+                const docDept = doc.data().department;
+                // Use a simple check for recent activity (Firestore query handles counts)
+                return docDept === department ||
+                    docDept === getDepartmentByCode(department!)?.name;
+            });
         }
 
         const recentActivity = recentDocs.slice(0, 5).map(doc => {
@@ -124,8 +102,12 @@ export async function GET(request: Request) {
         const weeklyStatsSnapshot = await weeklyStatsQuery.get();
         let weeklyDocs = weeklyStatsSnapshot.docs;
 
-        if (Boolean(shouldFilter)) {
-            weeklyDocs = weeklyDocs.filter(doc => doc.data().department === department);
+        if (shouldFilter) {
+            weeklyDocs = weeklyDocs.filter(doc => {
+                const docDept = doc.data().department;
+                return docDept === department ||
+                    docDept === getDepartmentByCode(department!)?.name;
+            });
         }
 
         const weeklyStatsMap = new Map();

@@ -20,8 +20,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 
 export default function PrincipalPage() {
+    const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
 
     const {
@@ -33,8 +36,14 @@ export default function PrincipalPage() {
         isViewModalOpen,
         setIsViewModalOpen,
         handleDelete,
-        handleView
-    } = useUserDashboard('principal', '1');
+        handleView,
+        // Deletion
+        confirmDelete,
+        isDeleteModalOpen,
+        setIsDeleteModalOpen,
+        isDeleting,
+        userToDelete
+    } = useUserDashboard('principal', '1', currentUser?.department || undefined);
 
     const filteredPrincipals = principals.filter(f =>
     (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -204,6 +213,14 @@ export default function PrincipalPage() {
                 user={selectedUser}
                 isOpen={isViewModalOpen}
                 onClose={() => setIsViewModalOpen(false)}
+            />
+
+            <DeleteConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                user={userToDelete}
             />
         </div>
     );
