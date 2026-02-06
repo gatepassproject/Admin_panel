@@ -69,10 +69,39 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const project = searchParams.get('project'); // '1' for gatepass, '2' or null for iot
+
+    // RESTORED VARIABLES
     const uid = searchParams.get('uid');
     let department = searchParams.get('department') as DepartmentCode | null;
-
     const { db } = getFirebaseInstances(project);
+
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const cursor = searchParams.get('cursor');
+
+    // Helper to apply pagination to a query
+    const applyPaginationToQuery = async (
+        query: FirebaseFirestore.Query,
+        collectionName: string,
+        cursorId?: string
+    ): Promise<FirebaseFirestore.Query> => {
+        // Always order by created_at descending, then uid ascending for stability
+        query = query.orderBy('created_at', 'desc').orderBy('uid', 'asc');
+
+        if (cursorId) {
+            try {
+                // Fetch the cursor document to use as the startAfter anchor
+                const cursorDoc = await db.collection(collectionName).doc(cursorId).get();
+                if (cursorDoc.exists) {
+                    query = query.startAfter(cursorDoc);
+                }
+            } catch (err) {
+                console.warn(`Failed to apply cursor pagination with ID ${cursorId}:`, err);
+                // Continue without cursor if document not found
+            }
+        }
+
+        return query;
+    };
 
     if (!db) {
         return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
@@ -84,6 +113,7 @@ export async function GET(request: NextRequest) {
         department = effectiveDept;
 
         if (uid) {
+            // ... existing single user fetch ...
             // When fetching by UID, we need to know the role to find the right collection
             // Try to get role from query params or search across common collections
             const userRole = searchParams.get('userRole');
@@ -131,6 +161,10 @@ export async function GET(request: NextRequest) {
                     query = applyDepartmentFilter(query, department);
                 }
 
+                // Apply pagination with cursor support
+                query = await applyPaginationToQuery(query, collectionName, cursor || undefined);
+                query = query.limit(limit + 1); // Fetch one extra to determine if more exist
+
                 const snapshot = await query.get();
 
                 const users = snapshot.docs
@@ -147,7 +181,15 @@ export async function GET(request: NextRequest) {
                 allUsers.push(...users);
             }
 
-            return NextResponse.json(allUsers);
+            // Check if there are more results beyond the limit
+            const hasMore = allUsers.length > limit;
+            const paginatedUsers = allUsers.slice(0, limit);
+
+            return NextResponse.json({
+                users: paginatedUsers,
+                hasMore,
+                lastVisibleId: paginatedUsers.length > 0 ? paginatedUsers[paginatedUsers.length - 1].id : null
+            });
         }
 
 
@@ -155,7 +197,11 @@ export async function GET(request: NextRequest) {
         const collectionName = getCollectionName(project, department, role);
         console.log(`[DEBUG] GET Fallback: Project ${project}, Dept ${department}, Role ${role} -> Collection ${collectionName}`);
 
-        let usersQuery: any = db.collection(collectionName);
+        let usersQuery: FirebaseFirestore.Query = db.collection(collectionName);
+
+        // Sorting and Pagination logic
+        usersQuery = await applyPaginationToQuery(usersQuery, collectionName, cursor || undefined);
+        usersQuery = usersQuery.limit(limit + 1); // Fetch one extra to determine if more exist
 
         const snapshot = await usersQuery.get();
 
@@ -170,7 +216,15 @@ export async function GET(request: NextRequest) {
                 };
             });
 
-        return NextResponse.json(users);
+        // Check if there are more results beyond the limit
+        const hasMore = users.length > limit;
+        const paginatedUsers = users.slice(0, limit);
+
+        return NextResponse.json({
+            users: paginatedUsers,
+            hasMore,
+            lastVisibleId: paginatedUsers.length > 0 ? paginatedUsers[paginatedUsers.length - 1].id : null
+        });
     } catch (error: any) {
         console.error('Error fetching users:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

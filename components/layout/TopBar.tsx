@@ -87,7 +87,10 @@ export default function TopBar() {
 
                 <div className="h-6 w-px bg-slate-200 mx-2" />
 
-                <button className="flex items-center gap-2 p-1 pl-2 hover:bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200 group active:scale-95">
+                <button
+                    onClick={() => router.push('/profile')}
+                    className="flex items-center gap-2 p-1 pl-2 hover:bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200 group active:scale-95"
+                >
                     <div className="flex flex-col items-end">
                         <span className="text-xs font-bold text-slate-700 leading-none">
                             {isLoading ? 'Loading...' : user?.full_name || 'Admin'}

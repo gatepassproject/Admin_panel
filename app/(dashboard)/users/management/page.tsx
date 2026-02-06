@@ -14,15 +14,13 @@ import {
     ShieldCheck,
     Database,
     Edit2,
-    Building2,
-    ChevronDown
+    Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
-import { getAllDepartmentCodes, DEPARTMENTS } from '@/lib/constants/departments';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
@@ -33,19 +31,18 @@ export default function UniversalManagementPage() {
     // Default filter to user's department or first available if global
     React.useEffect(() => {
         if (currentUser) {
-            const departments = getAllDepartmentCodes();
             const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
             if (!isGlobal && currentUser.department) {
                 setDeptFilter(currentUser.department);
-            } else if (isGlobal && !deptFilter && departments.length > 0) {
-                // Default global admins to first dept if none selected
-                setDeptFilter(departments[0]);
             }
         }
     }, [currentUser, deptFilter]);
     const {
         users,
         isLoading,
+        isLoadingMore,
+        hasMore,
+        loadMore,
         project,
         // setProject, // Removed for web-only
         selectedUser,
@@ -62,7 +59,6 @@ export default function UniversalManagementPage() {
     } = useUserDashboard('', '2', deptFilter); // Fetch all from Project 2, filter in UI
 
     const [searchTerm, setSearchTerm] = React.useState('');
-    const departments = getAllDepartmentCodes();
 
     const filteredStaff = users.filter(f => {
         const role = f.role?.toLowerCase() || '';
@@ -96,7 +92,7 @@ export default function UniversalManagementPage() {
                         < ShieldCheck className="w-8 h-8 text-[#1e3a5f]" />
                         Web Universal Control
                     </h2>
-                    <p className="text-slate-500 font-medium">Manage all administrative and academic credentials for the **Web Admin Panel** (admin_panel2 login system).</p>
+
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm ring-1 ring-[#1e3a5f]/5">
@@ -129,22 +125,6 @@ export default function UniversalManagementPage() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {(!currentUser || GLOBAL_ROLES.includes(currentUser.role)) && (
-                        <div className="relative w-full md:w-64">
-                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <select
-                                className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-[#1e3a5f]/5 focus:border-[#1e3a5f] appearance-none transition-all cursor-pointer"
-                                value={deptFilter}
-                                onChange={(e) => setDeptFilter(e.target.value)}
-                            >
-                                {departments.map(code => (
-                                    <option key={code} value={code}>{code} - {(DEPARTMENTS as any)[code]?.name || code}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                        </div>
-                    )}
-
                     {currentUser && !GLOBAL_ROLES.includes(currentUser.role) && (
                         <div className="flex items-center gap-2 bg-[#1e3a5f]/5 border border-[#1e3a5f]/10 rounded-xl px-4 py-2">
                             <Building2 className="w-4 h-4 text-[#1e3a5f]" />
@@ -160,6 +140,7 @@ export default function UniversalManagementPage() {
             <div className="dashboard-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
+                        {/* ... existing table content ... */}
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-100">
                                 <th className="px-6 py-4">
@@ -293,6 +274,18 @@ export default function UniversalManagementPage() {
                         </tbody>
                     </table>
                 </div>
+                {/* Pagination Load More */}
+                {hasMore && !isLoading && (
+                    <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-center">
+                        <button
+                            onClick={loadMore}
+                            disabled={isLoadingMore}
+                            className="text-xs font-black uppercase tracking-widest text-[#1e3a5f] hover:text-[#1e3a5f]/80 disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isLoadingMore ? 'Loading...' : 'Load More Users'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             <ViewUserModal

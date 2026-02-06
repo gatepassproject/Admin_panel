@@ -2,9 +2,14 @@
 
 import React from 'react';
 
+const USERS_PER_PAGE = 50;
+
 export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', deptFilter?: string) {
     const [users, setUsers] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+    const [hasMore, setHasMore] = React.useState(true);
+    const [lastVisibleId, setLastVisibleId] = React.useState<string | null>(null);
     const [project, setProject] = React.useState<'1' | '2'>(initialProject);
     const [selectedUser, setSelectedUser] = React.useState<any>(null);
     const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
@@ -23,16 +28,18 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', 
         return departmentCookie?.split('=')[1] || null;
     };
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (isLoadMore = false) => {
         try {
-            setIsLoading(true);
+            if (isLoadMore) {
+                setIsLoadingMore(true);
+            } else {
+                setIsLoading(true);
+            }
+
             const department = getDepartment();
+            let url = `/api/users?role=${role}&project=${project}&userRole=${role}&limit=${USERS_PER_PAGE}`;
 
-            // Build query params
-            let url = `/api/users?role=${role}&project=${project}&userRole=${role}`;
-
-            // Use the provided filter if present and not "All Departments"
-            // Otherwise fallback to cookie department
+            // Filtering
             const effectiveDept = (deptFilter && deptFilter !== 'All Departments')
                 ? deptFilter
                 : (deptFilter === 'All Departments' ? null : department);
@@ -41,14 +48,53 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', 
                 url += `&department=${effectiveDept}`;
             }
 
+            // Pagination Cursor - use lastVisibleId instead of last user
+            if (isLoadMore && lastVisibleId) {
+                url += `&cursor=${lastVisibleId}`;
+            }
+
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch users');
             const data = await response.json();
-            setUsers(data);
+
+            // Handle both old array format and new object format with pagination metadata
+            let paginatedUsers: any[] = [];
+            let moreAvailable = true;
+            let newLastVisibleId: string | null = null;
+
+            if (Array.isArray(data)) {
+                // Old format: direct array of users
+                paginatedUsers = data;
+                moreAvailable = data.length >= USERS_PER_PAGE;
+                newLastVisibleId = paginatedUsers.length > 0 ? paginatedUsers[paginatedUsers.length - 1].id || paginatedUsers[paginatedUsers.length - 1].uid : null;
+            } else if (data.users) {
+                // New format: { users, hasMore, lastVisibleId }
+                paginatedUsers = data.users;
+                moreAvailable = data.hasMore ?? false;
+                newLastVisibleId = data.lastVisibleId || (paginatedUsers.length > 0 ? paginatedUsers[paginatedUsers.length - 1].id || paginatedUsers[paginatedUsers.length - 1].uid : null);
+            }
+
+            if (isLoadMore) {
+                setUsers(prev => [...prev, ...paginatedUsers]);
+            } else {
+                setUsers(paginatedUsers);
+            }
+
+            // Update pagination state
+            setLastVisibleId(newLastVisibleId);
+            setHasMore(moreAvailable);
+
         } catch (err: any) {
             console.error(err);
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    };
+
+    const loadMore = () => {
+        if (!isLoadingMore && hasMore) {
+            fetchUsers(true);
         }
     };
 
@@ -84,7 +130,12 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', 
 
             setIsDeleteModalOpen(false);
             setUserToDelete(null);
-            fetchUsers();
+
+            // Refresh list - simpler to just reload first page or strict refresh
+            // But better UX: filter out deleted user locally
+            setUsers(prev => prev.filter(u => (u.uid || u.id) !== uid));
+            // fetchUsers(); // Optional: trigger fetch if we want strict sync
+
             return { success: true };
         } catch (e) {
             console.error('Delete failed:', e);
@@ -99,13 +150,20 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', 
         setIsViewModalOpen(true);
     };
 
+    // Initial load & Filter change -> Reset list
     React.useEffect(() => {
-        fetchUsers();
+        setUsers([]);
+        setLastVisibleId(null);
+        setHasMore(true);
+        fetchUsers(false);
     }, [project, role, deptFilter]);
 
     return {
         users,
         isLoading,
+        isLoadingMore,
+        hasMore,
+        loadMore,
         project,
         setProject,
         selectedUser,
@@ -119,6 +177,6 @@ export function useUserDashboard(role: string, initialProject: '1' | '2' = '1', 
         isDeleting,
         userToDelete,
         handleView,
-        refresh: fetchUsers
+        refresh: () => fetchUsers(false)
     };
 }

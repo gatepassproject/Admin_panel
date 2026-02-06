@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, firestore as db } from '@/lib/firebase';
-import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode } from '@/lib/constants/departments';
+import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getAllDepartmentCodes } from '@/lib/constants/departments';
 
 export interface CurrentUserData {
     uid: string;
@@ -27,97 +27,56 @@ export function useCurrentUser() {
     useEffect(() => {
         let isMounted = true;
 
-        const fetchUserFromSession = async (sessionId: string) => {
+        const checkUser = async () => {
             try {
-                const userDocRef = doc(db, 'web_admins', sessionId);
-                const userDoc = await getDoc(userDocRef);
-
-                if (userDoc.exists() && isMounted) {
-                    const userData = userDoc.data();
-                    setUser({
-                        uid: sessionId,
-                        email: userData.email,
-                        full_name: userData.full_name || 'User',
-                        role: userData.role || 'admin',
-                        department: userData.department as DepartmentCode,
-                        department_name: userData.department_name,
-                        designation: userData.designation,
-                        photoURL: userData.photoURL || undefined,
-                        phone: userData.phone,
-                        status: userData.status || 'active',
-                    });
+                // 1. Try Server-Side API (Most Reliable for Session Cookies)
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user && isMounted) {
+                        setUser(data.user);
+                        setIsLoading(false);
+                        return;
+                    }
                 }
-            } catch (err: any) {
-                console.error('Error fetching user from session cookie:', err);
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        };
-
-        // 1. Check for manual session cookie first (for "Proper Working" bypass)
-        const sessionCookie = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('session='));
-        const sessionId = sessionCookie?.split('=')[1];
-
-        if (sessionId) {
-            fetchUserFromSession(sessionId);
-        } else {
-            // Only show loader if no manual session to check
-            // or we can just let onAuthStateChanged handle it
-        }
-
-        // 2. Standard Firebase Auth Sync
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-            if (!firebaseUser) {
-                if (!sessionId) {
-                    setUser(null);
-                    setIsLoading(false);
-                }
-                return;
+            } catch (err) {
+                console.warn('API /auth/me failed, falling back to client SDK', err);
             }
 
-            try {
-                const userDocRef = doc(db, 'web_admins', firebaseUser.uid);
-                const userDoc = await getDoc(userDocRef);
+            // 2. Fallback to Client SDK (for basic Auth)
+            const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+                if (!firebaseUser) {
+                    if (isMounted) {
+                        // If API failed AND Auth failed, we are truly logged out
+                        setUser(null);
+                        setIsLoading(false);
+                    }
+                    return;
+                }
 
-                if (userDoc.exists() && isMounted) {
-                    const userData = userDoc.data();
-                    setUser({
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email,
-                        full_name: userData.full_name || firebaseUser.displayName || 'User',
-                        role: userData.role || 'admin',
-                        department: userData.department as DepartmentCode,
-                        department_name: userData.department_name,
-                        designation: userData.designation,
-                        photoURL: userData.photoURL || firebaseUser.photoURL || undefined,
-                        phone: userData.phone,
-                        status: userData.status || 'active',
-                    });
-                } else if (isMounted) {
+                if (isMounted) {
+                    // We have auth, but maybe API failed? Try to assume basic user
+                    // or try to fetch from Firestore directly (though API preferred)
                     setUser({
                         uid: firebaseUser.uid,
                         email: firebaseUser.email,
                         full_name: firebaseUser.displayName || 'User',
                         role: 'admin',
-                        photoURL: firebaseUser.photoURL || undefined,
                     });
+                    setIsLoading(false);
                 }
-                setError(null);
-            } catch (err: any) {
-                if (isMounted) {
-                    console.error('Error fetching user auth data:', err);
-                    setError(err.message);
-                }
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        });
+            });
+
+            return unsubscribe;
+        };
+
+        const unsubPromise = checkUser();
 
         return () => {
             isMounted = false;
-            unsubscribe();
+            if (unsubPromise && typeof unsubPromise !== 'undefined' && 'then' in unsubPromise) {
+                unsubPromise.then(unsub => unsub && unsub());
+            }
         };
     }, []);
 

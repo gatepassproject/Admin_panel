@@ -81,7 +81,6 @@ const navItems = [
             { title: 'Overview', href: '/analytics' },
             { title: 'Reports Generator', href: '/analytics/reports' },
             { title: 'Gate Logs', href: '/analytics/logs' },
-            { title: 'Attendance', href: '/analytics/attendance' },
         ],
     },
     {
@@ -244,6 +243,11 @@ export default function Sidebar() {
                             return null;
                         }
 
+                        // Hide Web Universal Control for everyone except master_admin
+                        if (item.title === 'Web Universal Control' && userRole !== 'master_admin') {
+                            return null;
+                        }
+
                         if (visibleSubItems && visibleSubItems.length === 0 && item.subItems) {
                             return null; // Don't show parent if all sub-items are filtered out
                         }
@@ -316,7 +320,10 @@ export default function Sidebar() {
                     })}
                 </nav>
 
-                <div className="p-4 mt-auto border-t border-[#2d4a7a] bg-[#1e3a5f]/50 backdrop-blur-sm">
+                <Link
+                    href="/profile"
+                    className="p-4 mt-auto border-t border-[#2d4a7a] bg-[#1e3a5f]/50 backdrop-blur-sm block"
+                >
                     <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all duration-300 group">
                         <div className="relative">
                             {user?.photoURL ? (
@@ -341,14 +348,18 @@ export default function Sidebar() {
                             </p>
                         </div>
                         <button
-                            onClick={handleLogoutClick}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleLogoutClick();
+                            }}
                             className="p-2 text-slate-400 hover:text-white hover:bg-red-500 rounded-xl transition-all duration-300 shadow-sm"
                             title="Logout from System"
                         >
                             <LogOut className="w-4 h-4" />
                         </button>
                     </div>
-                </div>
+                </Link>
             </aside>
             <LogoutModal
                 isOpen={showLogoutModal}
