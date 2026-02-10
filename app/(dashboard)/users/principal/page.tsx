@@ -45,11 +45,13 @@ export default function PrincipalPage() {
         userToDelete
     } = useUserDashboard('principal', '1', currentUser?.department || undefined);
 
-    const filteredPrincipals = principals.filter(f =>
-    (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredPrincipals = principals.filter(f => {
+        const search = searchTerm.toLowerCase();
+        return !search ||
+            (f.full_name?.toLowerCase() || '').includes(search) ||
+            (f.uid?.toLowerCase() || '').includes(search) ||
+            (f.email?.toLowerCase() || '').includes(search);
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">

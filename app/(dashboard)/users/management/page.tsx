@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-=======
+
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -307,4 +306,4 @@ export default function UniversalManagementPage() {
     );
 }
 
->>>>>>> 009bfb19443f1842a9747d030a8ba8f6f2df6e2d
+

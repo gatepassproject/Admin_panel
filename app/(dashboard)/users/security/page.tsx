@@ -46,12 +46,17 @@ export default function SecurityStaffPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedShift, setSelectedShift] = React.useState('All');
 
-    const filteredStaff = staff.filter(s =>
-        (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.badge_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedShift === 'All' || s.shift === selectedShift)
-    );
+    const filteredStaff = staff.filter(s => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch = !search ||
+            (s.full_name?.toLowerCase() || '').includes(search) ||
+            (s.badge_id?.toLowerCase() || '').includes(search) ||
+            (s.email?.toLowerCase() || '').includes(search);
+
+        const matchesShift = selectedShift === 'All' || (s.shift || '') === selectedShift;
+
+        return matchesSearch && matchesShift;
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">

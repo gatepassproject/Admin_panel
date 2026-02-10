@@ -62,16 +62,20 @@ export default function StudentsPage() {
         userToDelete
     } = useUserDashboard('student', '1', selectedDepartment); // Pass selectedDepartment to enable dynamic fetching
 
-    const filteredStudents = students.filter(s =>
-        (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.roll_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.reg_no?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        // Strict isolation is now handled at the API level via useUserDashboard(..., selectedDepartment)
-        // This local filter is just for additional safety
-        (selectedDepartment === '' || (s.department || s.branch) === selectedDepartment) &&
-        (selectedBatch === 'All Batches' || (s.batch || s.year) === selectedBatch)
-    );
+    const filteredStudents = students.filter(s => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch = !search ||
+            (s.full_name?.toLowerCase() || '').includes(search) ||
+            (s.uid?.toLowerCase() || '').includes(search) ||
+            (s.email?.toLowerCase() || '').includes(search) ||
+            (s.roll_no?.toLowerCase() || '').includes(search) ||
+            (s.reg_no?.toLowerCase() || '').includes(search);
+
+        const matchesBatch = selectedBatch === 'All Batches' ||
+            (s.batch || s.year || '') === selectedBatch;
+
+        return matchesSearch && matchesBatch;
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">

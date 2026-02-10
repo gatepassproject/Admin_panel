@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-=======
+// Re-compile Trigger
 import { NextResponse, NextRequest } from 'next/server';
 import { db1, db2, adminAuth } from '@/lib/firebase-admin';
 import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
@@ -84,11 +83,17 @@ export async function GET(request: NextRequest) {
     const applyPaginationToQuery = async (
         query: FirebaseFirestore.Query,
         collectionName: string,
-        cursorId?: string
+        cursorId?: string,
+        hasFilters: boolean = false
     ): Promise<FirebaseFirestore.Query> => {
-        // Always order by created_at descending, then uid ascending for stability
-        query = query.orderBy('created_at', 'desc').orderBy('uid', 'asc');
+        // To avoid composite index requirements, we only apply ordering if no filters are present.
+        // Firestore automatically requires composite indexes when combining filtering and sorting.
+        if (!hasFilters) {
+            query = query.orderBy('created_at', 'desc').orderBy('uid', 'asc');
+        }
 
+        // If we have a cursor, we must apply the same ordering that was used to generate it.
+        // For filtered queries without ordering, startAfter works based on the default document ID order.
         if (cursorId) {
             try {
                 // Fetch the cursor document to use as the startAfter anchor
@@ -164,7 +169,8 @@ export async function GET(request: NextRequest) {
                 }
 
                 // Apply pagination with cursor support
-                query = await applyPaginationToQuery(query, collectionName, cursor || undefined);
+                const hasFilters = !!department;
+                query = await applyPaginationToQuery(query, collectionName, cursor || undefined, hasFilters);
                 query = query.limit(limit + 1); // Fetch one extra to determine if more exist
 
                 const snapshot = await query.get();
@@ -202,7 +208,8 @@ export async function GET(request: NextRequest) {
         let usersQuery: FirebaseFirestore.Query = db.collection(collectionName);
 
         // Sorting and Pagination logic
-        usersQuery = await applyPaginationToQuery(usersQuery, collectionName, cursor || undefined);
+        const hasFilters = !!department || !!role;
+        usersQuery = await applyPaginationToQuery(usersQuery, collectionName, cursor || undefined, hasFilters);
         usersQuery = usersQuery.limit(limit + 1); // Fetch one extra to determine if more exist
 
         const snapshot = await usersQuery.get();
@@ -582,4 +589,4 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
->>>>>>> 009bfb19443f1842a9747d030a8ba8f6f2df6e2d
+
