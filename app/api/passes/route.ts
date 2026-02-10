@@ -15,33 +15,60 @@ export async function GET(request: Request) {
     try {
         const requester = getRequesterIdentity(request);
         const department = getEffectiveDepartment(requester, searchParams.get('department'));
+        console.log(`[API/Passes] Fetching passes... status=${status}, user_dept=${requester.department}, filter_dept=${department}`);
 
         let query: FirebaseFirestore.Query = db1.collection('gate_passes');
 
-        if (status) {
-            query = query.where('status', '==', status);
-        }
+        // Note: For robustness, we fetch broadly for the department and filter status/other fields in memory.
+        // This handles case-sensitivity issues and variations in field names.
 
-        if (student_id) {
-            query = query.where('student_id', '==', student_id);
-        }
+        let snapshot: FirebaseFirestore.QuerySnapshot;
 
         if (department) {
-            // Passes collection uses standard department names/codes
-            query = applyDepartmentFilter(query, department);
+            // Fetch by department (this is the main isolation boundary)
+            snapshot = await applyDepartmentFilter(query, department).limit(300).get();
+
+            // Fallback: If no docs with 'department' field, try 'destination' field
+            if (snapshot.empty) {
+                const deptInfo = (await import('@/lib/constants/departments')).getDepartmentByCode(department);
+                if (deptInfo) {
+                    snapshot = await query.where('destination', '==', deptInfo.name).limit(300).get();
+                }
+            }
+        } else {
+            // Global view for admins without department restriction
+            snapshot = await query.orderBy('created_at', 'desc').limit(300).get();
         }
 
-        const snapshot = await query.orderBy('created_at', 'desc').get();
-        const passes = snapshot.docs.map(doc => ({
+        console.log(`[API/Passes] Loaded ${snapshot.size} raw documents from Firestore`);
+
+        let passes = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
+        // In-memory Status Filtering (Case-Insensitive)
+        if (status && status !== 'All') {
+            const targetStatus = status.toLowerCase();
+            passes = passes.filter((p: any) =>
+                p.status?.toLowerCase() === targetStatus
+            );
+            console.log(`[API/Passes] Filtered to ${passes.length} documents with status=${status}`);
+        }
+
+        // In-memory sorting (Robust fallback for various timestamp fields)
+        passes.sort((a: any, b: any) => {
+            const extractTime = (p: any) => {
+                const t = p.created_at || p.date || p.start_time || p.approval_date;
+                return t?._seconds || (t ? new Date(t).getTime() / 1000 : 0);
+            };
+            return extractTime(b) - extractTime(a);
+        });
+
         return NextResponse.json(passes);
     } catch (error: any) {
-        console.error('Error fetching passes:', error);
-        const { mockPasses } = await import('../mockData');
-        return NextResponse.json(mockPasses);
+        console.error('❌ [API/Passes] Error fetching passes:', error);
+        return NextResponse.json([]);
     }
 }
 

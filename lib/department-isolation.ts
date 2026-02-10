@@ -86,18 +86,29 @@ export function applyDepartmentFilter(
     const possibleValues: string[] = [departmentCode];
 
     if (deptInfo) {
-        possibleValues.push(deptInfo.name);
-
         // Handle common legacy/mobile app variations
         if (departmentCode === 'CSE' && !possibleValues.includes('Computer Science')) {
             possibleValues.push('Computer Science');
+            possibleValues.push('Computer Science Engineering'); // Explicitly add full name
+            possibleValues.push('CSE');
         }
         if (departmentCode === 'IOT' && !possibleValues.includes('Internet of Things') && !possibleValues.includes('IoT')) {
             possibleValues.push('Internet of Things', 'IoT');
         }
+
+        // Add variations for other departments if found in logs
+        if (departmentCode === 'AI_ML' && !possibleValues.includes('AI & ML')) {
+            possibleValues.push('AI & ML');
+            possibleValues.push('Artificial Intelligence');
+        }
+
+        // Ensure both code and name are present
+        if (!possibleValues.includes(deptInfo.name)) possibleValues.push(deptInfo.name);
+        if (!possibleValues.includes(deptInfo.code)) possibleValues.push(deptInfo.code);
     }
 
     // Use 'in' operator to match any of the possible department name variations
+    console.log(`[Isolation] Applying filter for ${departmentCode}:`, possibleValues);
     return query.where('department', 'in', possibleValues);
 }
 

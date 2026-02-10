@@ -49,12 +49,17 @@ export default function ParentsPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRelation, setSelectedRelation] = React.useState('All');
 
-    const filteredParents = parents.filter(p =>
-        (p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.email?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (selectedRelation === 'All' || p.relation === selectedRelation)
-    );
+    const filteredParents = parents.filter(p => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch = !search ||
+            (p.full_name?.toLowerCase() || '').includes(search) ||
+            (p.student_id?.toLowerCase() || '').includes(search) ||
+            (p.email?.toLowerCase() || '').includes(search);
+
+        const matchesRelation = selectedRelation === 'All' || (p.relation || '') === selectedRelation;
+
+        return matchesSearch && matchesRelation;
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">

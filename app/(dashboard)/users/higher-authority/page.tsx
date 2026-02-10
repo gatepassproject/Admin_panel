@@ -43,11 +43,13 @@ export default function HigherAuthorityPage() {
 
     const [searchTerm, setSearchTerm] = React.useState('');
 
-    const filteredStaff = staff.filter(f =>
-    (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredStaff = staff.filter(f => {
+        const search = searchTerm.toLowerCase();
+        return !search ||
+            (f.full_name?.toLowerCase() || '').includes(search) ||
+            (f.uid?.toLowerCase() || '').includes(search) ||
+            (f.email?.toLowerCase() || '').includes(search);
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">

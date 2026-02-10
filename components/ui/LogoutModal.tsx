@@ -61,7 +61,7 @@ export default function LogoutModal({ isOpen, onClose, onConfirm, isLoading = fa
                 {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white text-slate-400 hover:text-slate-600 rounded-full backdrop-blur-sm transition-colors z-10"
+                    className="absolute top-4 right-4 p-2 bg-white/50 hover:bg-white text-slate-400 hover:text-slate-600 rounded-full backdrop-blur-sm transition-colors z-[60]"
                 >
                     <X className="w-5 h-5" />
                 </button>

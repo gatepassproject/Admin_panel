@@ -21,28 +21,12 @@ import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
-import { DEPARTMENTS, getAllDepartmentCodes, isValidDepartmentCode } from '@/lib/constants/departments';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
-import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function StudentsPage() {
     const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDepartment, setSelectedDepartment] = React.useState('');
     const [selectedBatch, setSelectedBatch] = React.useState('All Batches');
-
-    // Default filter to user's department or first available if global
-    React.useEffect(() => {
-        if (currentUser) {
-            const departments = getAllDepartmentCodes();
-            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
-            if (!isGlobal && currentUser.department) {
-                setSelectedDepartment(currentUser.department);
-            } else if (isGlobal && !selectedDepartment && departments.length > 0) {
-                setSelectedDepartment(departments[0]);
-            }
-        }
-    }, [currentUser, selectedDepartment]);
 
     const {
         users: students,
@@ -60,18 +44,22 @@ export default function StudentsPage() {
         setIsDeleteModalOpen,
         isDeleting,
         userToDelete
-    } = useUserDashboard('student', '1', selectedDepartment); // Pass selectedDepartment to enable dynamic fetching
+    } = useUserDashboard('student', '1');
 
-    const filteredStudents = students.filter(s =>
-        (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.roll_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.reg_no?.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        // Strict isolation is now handled at the API level via useUserDashboard(..., selectedDepartment)
-        // This local filter is just for additional safety
-        (selectedDepartment === '' || (s.department || s.branch) === selectedDepartment) &&
-        (selectedBatch === 'All Batches' || (s.batch || s.year) === selectedBatch)
-    );
+    const filteredStudents = students.filter(s => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch = !search ||
+            (s.full_name?.toLowerCase() || '').includes(search) ||
+            (s.uid?.toLowerCase() || '').includes(search) ||
+            (s.email?.toLowerCase() || '').includes(search) ||
+            (s.roll_no?.toLowerCase() || '').includes(search) ||
+            (s.reg_no?.toLowerCase() || '').includes(search);
+
+        const matchesBatch = selectedBatch === 'All Batches' ||
+            (s.batch || s.year || '') === selectedBatch;
+
+        return matchesSearch && matchesBatch;
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">
@@ -121,19 +109,7 @@ export default function StudentsPage() {
                     />
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[140px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Department:</span>
-                        <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer disabled:opacity-50"
-                            value={selectedDepartment}
-                            onChange={(e) => setSelectedDepartment(e.target.value)}
-                            disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
-                        >
-                            {getAllDepartmentCodes().map(code => (
-                                <option key={code} value={code}>{code}</option>
-                            ))}
-                        </select>
-                    </div>
+
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[120px]">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Batch:</span>
                         <select

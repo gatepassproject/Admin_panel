@@ -44,11 +44,13 @@ export default function AdmissionPage() {
 
     const [searchTerm, setSearchTerm] = React.useState('');
 
-    const filteredStaff = users.filter(f =>
-    (f.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredStaff = users.filter(f => {
+        const search = searchTerm.toLowerCase();
+        return !search ||
+            (f.full_name?.toLowerCase() || '').includes(search) ||
+            (f.uid?.toLowerCase() || '').includes(search) ||
+            (f.email?.toLowerCase() || '').includes(search);
+    });
 
     return (
         <div className="space-y-6 page-transition pb-20">
