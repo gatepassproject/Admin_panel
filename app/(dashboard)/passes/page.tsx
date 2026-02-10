@@ -17,7 +17,8 @@ import {
     ChevronDown,
     ArrowUpDown
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPassTime } from '@/lib/utils';
+import PassDetailsModal from '@/components/PassDetailsModal';
 
 export default function PassPage() {
     const [passes, setPasses] = React.useState<any[]>([]);
@@ -26,6 +27,7 @@ export default function PassPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [filterStatus, setFilterStatus] = React.useState('All');
     const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
+    const [selectedPass, setSelectedPass] = React.useState<any>(null);
 
     const fetchPasses = async () => {
         try {
@@ -46,6 +48,10 @@ export default function PassPage() {
 
     React.useEffect(() => {
         fetchPasses();
+
+        // Auto-refresh every 30 seconds for "Live" data
+        const interval = setInterval(fetchPasses, 30000);
+        return () => clearInterval(interval);
     }, [filterStatus]);
 
     const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -67,11 +73,19 @@ export default function PassPage() {
         }
     };
 
-    const filteredPasses = passes.filter(pass =>
-        pass.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pass.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pass.reason?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPasses = passes.filter(pass => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch =
+            (pass.full_name || '').toLowerCase().includes(search) ||
+            (pass.student_name || '').toLowerCase().includes(search) ||
+            (pass.visitor_name || '').toLowerCase().includes(search) ||
+            (pass.faculty_name || '').toLowerCase().includes(search) ||
+            (pass.student_id || '').toLowerCase().includes(search) ||
+            (pass.visitor_id || '').toLowerCase().includes(search) ||
+            (pass.purpose || '').toLowerCase().includes(search) ||
+            (pass.reason || '').toLowerCase().includes(search);
+        return matchesSearch;
+    });
 
     if (error) {
         return (
@@ -166,87 +180,117 @@ export default function PassPage() {
                                                 <ClipboardList className="w-8 h-8 text-slate-300" />
                                             </div>
                                             <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">No passes found</p>
+                                            {passes.length > 0 && (
+                                                <p className="text-[9px] text-slate-300 font-medium">
+                                                    ({passes.length} total records found, but hidden by search/filter)
+                                                </p>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
-                                filteredPasses.map((pass) => (
-                                    <tr key={pass.id} className="group hover:bg-slate-50/50 transition-all">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-black text-lg shadow-inner">
-                                                    {pass.full_name?.[0]}
+                                filteredPasses.map((pass) => {
+                                    // Dynamic name resolution
+                                    const displayName = pass.full_name || pass.student_name || pass.visitor_name || pass.faculty_name || 'Unnamed';
+
+                                    // Display ID resolution
+                                    const displayId = pass.student_id || pass.visitor_id || '---';
+
+                                    // Purpose/Reason resolution
+                                    const displayReason = pass.purpose || pass.reason || 'No reason specified';
+
+                                    // Time formatting helper
+                                    const outTime = formatPassTime(pass.exit_time || pass.start_time || pass.date);
+                                    const inTime = formatPassTime(pass.in_time || pass.end_time || pass.expected_return_time || pass.actual_return_time);
+
+                                    return (
+                                        <tr key={pass.id} className="group hover:bg-slate-50/50 transition-all">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-black text-lg shadow-inner">
+                                                        {displayName[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900 group-hover:text-[#1e3a5f] transition-colors">{displayName}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{displayId}</p>
+                                                        <p className="text-[10px] font-bold text-[#c32026] mt-0.5">{pass.department}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-900 group-hover:text-[#1e3a5f] transition-colors">{pass.full_name}</p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{pass.student_id}</p>
-                                                    <p className="text-[10px] font-bold text-[#c32026] mt-0.5">{pass.department}</p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <span className="px-2 py-0.5 bg-blue-50 text-[#1e3a5f] text-[9px] font-black uppercase rounded border border-blue-100">
+                                                        {pass.pass_type || 'Local Outing'}
+                                                    </span>
+                                                    <p className="text-xs font-medium text-slate-600 line-clamp-1">{displayReason}</p>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                <span className="px-2 py-0.5 bg-blue-50 text-[#1e3a5f] text-[9px] font-black uppercase rounded border border-blue-100">
-                                                    {pass.pass_type || 'Local Outing'}
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-bold text-slate-700">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-3 h-3 text-emerald-500" />
+                                                        <span>{outTime}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 opacity-50">
+                                                        <Clock className="w-3 h-3" />
+                                                        <span>{inTime}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={cn(
+                                                    "px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border",
+                                                    (pass.status?.toLowerCase() === 'pending' || pass.status?.toLowerCase() === 'active') ? "bg-amber-50 text-amber-600 border-amber-100" :
+                                                        (pass.status?.toLowerCase() === 'approved' || pass.status?.toLowerCase() === 'completed') ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                            pass.status?.toLowerCase() === 'exit' ? "bg-orange-50 text-orange-600 border-orange-100" :
+                                                                "bg-red-50 text-red-600 border-red-100"
+                                                )}>
+                                                    {pass.status}
                                                 </span>
-                                                <p className="text-xs font-medium text-slate-600 line-clamp-1">{pass.reason}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs font-bold text-slate-700">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="w-3 h-3 text-emerald-500" />
-                                                    <span>{pass.out_time}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 opacity-50">
-                                                    <Clock className="w-3 h-3" />
-                                                    <span>{pass.in_time}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={cn(
-                                                "px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border",
-                                                pass.status === 'Pending' ? "bg-amber-50 text-amber-600 border-amber-100" :
-                                                    pass.status === 'Approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                                        "bg-red-50 text-red-600 border-red-100"
-                                            )}>
-                                                {pass.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {pass.status === 'Pending' ? (
-                                                <div className="flex items-center justify-end gap-2">
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {pass.status === 'Pending' ? (
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(pass.id, 'Approved')}
+                                                            disabled={!!isUpdating}
+                                                            className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 disabled:opacity-50"
+                                                            title="Approve Pass"
+                                                        >
+                                                            {isUpdating === pass.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(pass.id, 'Rejected')}
+                                                            disabled={!!isUpdating}
+                                                            className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100 disabled:opacity-50"
+                                                            title="Reject Pass"
+                                                        >
+                                                            <XCircle className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
                                                     <button
-                                                        onClick={() => handleUpdateStatus(pass.id, 'Approved')}
-                                                        disabled={!!isUpdating}
-                                                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 disabled:opacity-50"
-                                                        title="Approve Pass"
+                                                        onClick={() => setSelectedPass(pass)}
+                                                        className="p-2 text-slate-400 hover:text-[#1e3a5f] transition-colors"
                                                     >
-                                                        {isUpdating === pass.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                                        <Eye className="w-5 h-5" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleUpdateStatus(pass.id, 'Rejected')}
-                                                        disabled={!!isUpdating}
-                                                        className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100 disabled:opacity-50"
-                                                        title="Reject Pass"
-                                                    >
-                                                        <XCircle className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button className="p-2 text-slate-400 hover:text-[#1e3a5f] transition-colors">
-                                                    <Eye className="w-5 h-5" />
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
+            {/* Modal */}
+            <PassDetailsModal
+                isOpen={!!selectedPass}
+                onClose={() => setSelectedPass(null)}
+                pass={selectedPass}
+            />
         </div>
     );
 }

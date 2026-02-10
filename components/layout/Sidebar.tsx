@@ -60,7 +60,6 @@ const navItems = [
         subItems: [
             { title: 'All Passes', href: '/passes' },
             { title: 'Approval Queue', href: '/passes/approval' },
-            { title: 'Configuration', href: '/passes/config' },
             { title: 'Templates', href: '/passes/templates' },
         ],
     },

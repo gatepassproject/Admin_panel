@@ -22,27 +22,12 @@ import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
-import { DEPARTMENTS, getAllDepartmentCodes, isValidDepartmentCode } from '@/lib/constants/departments';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
-import { GLOBAL_ROLES } from '@/lib/department-isolation';
 
 export default function FacultyPage() {
     const { user: currentUser } = useCurrentUser();
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedDept, setSelectedDept] = React.useState('');
 
-    // Default filter to user's department or first available if global
-    React.useEffect(() => {
-        if (currentUser) {
-            const departments = getAllDepartmentCodes();
-            const isGlobal = GLOBAL_ROLES.includes(currentUser.role);
-            if (!isGlobal && currentUser.department) {
-                setSelectedDept(currentUser.department);
-            } else if (isGlobal && !selectedDept && departments.length > 0) {
-                setSelectedDept(departments[0]);
-            }
-        }
-    }, [currentUser, selectedDept]);
 
     const {
         users: faculty,
@@ -60,7 +45,7 @@ export default function FacultyPage() {
         setIsDeleteModalOpen,
         isDeleting,
         userToDelete
-    } = useUserDashboard('faculty', '1', selectedDept);
+    } = useUserDashboard('faculty', '1');
 
     const filteredFaculty = faculty.filter(f => {
         const search = searchTerm.toLowerCase();
@@ -111,19 +96,7 @@ export default function FacultyPage() {
                     />
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-[200px]">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dept:</span>
-                        <select
-                            className="bg-transparent border-none text-xs font-black text-slate-700 outline-none w-full cursor-pointer disabled:opacity-50"
-                            value={selectedDept}
-                            onChange={(e) => setSelectedDept(e.target.value)}
-                            disabled={!!currentUser && !GLOBAL_ROLES.includes(currentUser.role)}
-                        >
-                            {getAllDepartmentCodes().map(code => (
-                                <option key={code} value={code}>{code}</option>
-                            ))}
-                        </select>
-                    </div>
+
                 </div>
             </div>
 
