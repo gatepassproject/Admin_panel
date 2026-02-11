@@ -43,10 +43,13 @@ export async function GET(req: NextRequest) {
             collections.unshift(`web_admins_${userDept}`);
         }
 
+        console.log(`[AUTH/ME DEBUG] Checking collections for UID: ${uid}, Dept: ${userDept}`);
+
         for (const col of collections) {
             const docSnap = await adminDb.collection(col).doc(uid).get();
             if (docSnap.exists) {
                 userData = docSnap.data();
+                console.log(`[AUTH/ME DEBUG] Found user in: ${col}`);
                 break;
             }
         }
@@ -56,6 +59,7 @@ export async function GET(req: NextRequest) {
             const userDoc = await adminDb.collection('users').doc(uid).get();
             if (userDoc.exists) {
                 userData = userDoc.data();
+                console.log(`[AUTH/ME DEBUG] Found user in: users fallback`);
             }
         }
 
@@ -80,6 +84,7 @@ export async function GET(req: NextRequest) {
         // User authenticated but no profile found?
         // Return basic info if we verified via Auth
         if (fromAuth) {
+            console.log(`[AUTH/ME DEBUG] No Firestore profile but verified via Firebase Auth`);
             return NextResponse.json({
                 user: {
                     uid: uid,
@@ -90,6 +95,7 @@ export async function GET(req: NextRequest) {
             });
         }
 
+        console.warn(`[AUTH/ME DEBUG] User with UID ${uid} not found in any collection. Returning 404.`);
         return NextResponse.json({ user: null }, { status: 404 });
 
     } catch (error: any) {

@@ -125,11 +125,11 @@ export default function AddParentPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link
-                        href="/users/parents"
+                        href="/users/guardians"
                         className="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors text-xs font-bold uppercase tracking-widest mb-2 group"
                     >
                         <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" />
-                        Back to Parents
+                        Back to Guardians
                     </Link>
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
                         {uid ? 'Edit' : 'Add'} Parent Account
@@ -302,7 +302,7 @@ export default function AddParentPage() {
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4">
-                    <Link href="/users/parents" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
+                    <Link href="/users/guardians" className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all">
                         Cancel
                     </Link>
                     <button

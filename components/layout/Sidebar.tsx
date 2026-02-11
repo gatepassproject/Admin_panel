@@ -49,7 +49,7 @@ const navItems = [
             { title: 'Admission Cell', href: '/users/admission' },
             { title: 'Higher Authority', href: '/users/higher-authority' },
             { title: 'Security Staff', href: '/users/security' },
-            { title: 'Parents', href: '/users/parents' },
+            { title: 'Guardians', href: '/users/guardians' },
             { title: 'Roles & Permissions', href: '/users/roles' },
         ],
     },
@@ -112,9 +112,9 @@ const navItems = [
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-    'master_admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'parents', 'roles', 'management', 'web-control'],
-    'admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'parents', 'roles', 'admin', 'staff', 'management', 'web-control'],
-    'principal': ['students', 'faculty', 'hod', 'security', 'parents'],
+    'master_admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'guardians', 'roles', 'management', 'web-control'],
+    'admin': ['students', 'faculty', 'hod', 'principal', 'admission', 'higher-authority', 'security', 'guardians', 'roles', 'admin', 'staff', 'management', 'web-control'],
+    'principal': ['students', 'faculty', 'hod', 'security', 'guardians'],
     'hod': ['students', 'faculty'],
     'faculty': ['students'],
     'admission': ['admin'],

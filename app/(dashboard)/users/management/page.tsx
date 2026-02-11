@@ -248,8 +248,8 @@ export default function UniversalManagementPage() {
                                                                 const normalized = role.replace('_', '-');
                                                                 let folder = normalized;
                                                                 if (role === 'student') folder = 'students';
-                                                                if (role === 'parent') folder = 'parents';
-                                                                const supported = ['admin', 'admission', 'faculty', 'higher-authority', 'hod', 'parents', 'principal', 'security', 'students'];
+                                                                if (role === 'parent') folder = 'guardians';
+                                                                const supported = ['admin', 'admission', 'faculty', 'higher-authority', 'hod', 'guardians', 'principal', 'security', 'students'];
                                                                 const finalFolder = supported.includes(folder) ? folder : 'faculty';
                                                                 return `/users/${finalFolder}/add?uid=${f.uid}&project=${project}`;
                                                             })()}

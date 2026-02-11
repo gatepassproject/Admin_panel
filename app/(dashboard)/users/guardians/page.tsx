@@ -80,7 +80,7 @@ export default function ParentsPage() {
                         </span>
                     </div>
                     <Link
-                        href={`/users/parents/add?project=${project}`}
+                        href={`/users/guardians/add?project=${project}`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#c32026] hover:bg-[#a61a20] text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-500/20 transition-all font-black"
                     >
                         <Plus className="w-4 h-4" />
@@ -215,7 +215,7 @@ export default function ParentsPage() {
                                                     <Eye className="w-4 h-4" />
                                                 </button>
                                                 <Link
-                                                    href={`/users/parents/add?uid=${p.uid}&project=${project}`}
+                                                    href={`/users/guardians/add?uid=${p.uid}&project=${project}`}
                                                     className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
                                                     title="Edit Record"
                                                 >

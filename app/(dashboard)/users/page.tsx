@@ -101,13 +101,13 @@ export default function UserManagementDashboard() {
             addHref: '/users/security/add'
         },
         {
-            title: 'Parents',
+            title: 'Guardians',
             description: 'Guardians linked to students for real-time monitoring.',
             icon: Heart,
             count: '956',
             color: 'orange',
-            href: '/users/parents',
-            addHref: '/users/parents/add'
+            href: '/users/guardians',
+            addHref: '/users/guardians/add'
         }
     ];
 
