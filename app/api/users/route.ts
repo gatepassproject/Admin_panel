@@ -375,18 +375,8 @@ export async function POST(request: NextRequest) {
         const collectionName = getCollectionName(project, department, role);
         await db.collection(collectionName).doc(userRecord.uid).set(userData);
 
-        // 4. CRITICAL FIX: Create "Source of Truth" entry in `users` collection
-        // The mobile app expects this to determine the user's role (StudentLoginScreen.js line 95)
-        const usersCollectionEntry = {
-            uid: userRecord.uid,
-            email: finalEmail,
-            role,
-            full_name: trimmedFullName,
-            created_at: new Date().toISOString(),
-        };
-        await db.collection('users').doc(userRecord.uid).set(usersCollectionEntry);
-
-        console.log(`✅ Created user in both '${collectionName}' and 'users' collections`);
+        console.log(`✅ Created user in '${collectionName}' collection`);
+        // Removed 'users' collection entry creation as per user directive "donot use users collection"
 
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
 
