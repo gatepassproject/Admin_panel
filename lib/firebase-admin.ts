@@ -1,13 +1,22 @@
 import * as admin from 'firebase-admin';
 
 // Re-use initialization logic for server environments
-if (!admin.apps.length) {
+function initializeAdmin() {
+    if (admin.apps.length > 0) return admin.app();
+
     try {
         const privateKey = process.env.FIREBASE_PRIVATE_KEY;
         // Handle cases where private key might be quoted or have escaped newlines
-        const formattedPrivateKey = privateKey ? privateKey.replace(/\\n/g, '\n') : undefined;
+        const formattedPrivateKey = privateKey
+            ? privateKey.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1')
+            : undefined;
 
-        admin.initializeApp({
+        if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !formattedPrivateKey) {
+            console.warn('⚠️ Firebase Admin Environment Variables Missing. Some services may fail.');
+            return null;
+        }
+
+        return admin.initializeApp({
             credential: admin.credential.cert({
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
@@ -15,14 +24,16 @@ if (!admin.apps.length) {
             }),
             databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
         });
-        console.log('✅ Firebase Admin Initialized in API Runtime');
     } catch (error) {
         console.error('❌ Firebase Admin Initialization Error:', error);
+        return null;
     }
 }
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+const app = initializeAdmin();
+
+export const adminAuth = app ? app.auth() : {} as admin.auth.Auth;
+export const adminDb = app ? app.firestore() : {} as admin.firestore.Firestore;
 
 // Legacy compatibility exports (Unified System)
 export const db1 = adminDb; // Points to shared gatepass-49d43 Firestore
