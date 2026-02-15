@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db1 } from '@/lib/firebase-admin';
 import { getRequesterIdentity, getEffectiveDepartment, applyDepartmentFilter } from '@/lib/department-isolation';
+import { serverCache, cacheKeys } from '@/lib/cache';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const student_id = searchParams.get('student_id');
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageLimit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
 
     if (!db1) {
         const { mockPasses } = await import('../mockData');
@@ -15,7 +18,13 @@ export async function GET(request: Request) {
     try {
         const requester = getRequesterIdentity(request);
         const department = getEffectiveDepartment(requester, searchParams.get('department'));
-        console.log(`[API/Passes] Fetching passes... status=${status}, user_dept=${requester.department}, filter_dept=${department}`);
+
+        // Check cache first (TTL: 30 seconds)
+        const cacheKey = `passes_${status || 'all'}_${department || 'all'}_p${page}`;
+        const cached = serverCache.get(cacheKey);
+        if (cached) return NextResponse.json(cached);
+
+        console.log(`[API/Passes] Fetching passes... status=${status}, dept=${department}, page=${page}`);
 
         let query: FirebaseFirestore.Query = db1.collection('gate_passes');
 
@@ -56,7 +65,7 @@ export async function GET(request: Request) {
             console.log(`[API/Passes] Filtered to ${passes.length} documents with status=${status}`);
         }
 
-        // In-memory sorting (Robust fallback for various timestamp fields)
+        // In-memory sorting
         passes.sort((a: any, b: any) => {
             const extractTime = (p: any) => {
                 const t = p.created_at || p.date || p.start_time || p.approval_date;
@@ -65,7 +74,26 @@ export async function GET(request: Request) {
             return extractTime(b) - extractTime(a);
         });
 
-        return NextResponse.json(passes);
+        // Apply pagination
+        const totalCount = passes.length;
+        const startIdx = (page - 1) * pageLimit;
+        const paginatedPasses = passes.slice(startIdx, startIdx + pageLimit);
+
+        const result = {
+            data: paginatedPasses,
+            pagination: {
+                page,
+                limit: pageLimit,
+                total: totalCount,
+                totalPages: Math.ceil(totalCount / pageLimit),
+                hasMore: startIdx + pageLimit < totalCount
+            }
+        };
+
+        // Cache for 30 seconds
+        serverCache.set(cacheKey, result, 30);
+
+        return NextResponse.json(result);
     } catch (error: any) {
         console.error('❌ [API/Passes] Error fetching passes:', error);
         return NextResponse.json([]);
@@ -104,6 +132,10 @@ export async function PATCH(request: Request) {
             remarks,
             updated_at: new Date().toISOString()
         });
+
+        // Invalidate related caches
+        serverCache.invalidate('passes_*');
+        serverCache.invalidate('stats_*');
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

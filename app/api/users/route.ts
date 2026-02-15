@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { db1, db2, adminAuth } from '@/lib/firebase-admin';
 import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
 import { getRequesterIdentity, getEffectiveDepartment, applyDepartmentFilter } from '@/lib/department-isolation';
+import { serverCache } from '@/lib/cache';
 
 const PROJECT_GATEPASS = '1';
 const PROJECT_IOT = '2';
@@ -376,7 +377,10 @@ export async function POST(request: NextRequest) {
         await db.collection(collectionName).doc(userRecord.uid).set(userData);
 
         console.log(`✅ Created user in '${collectionName}' collection`);
-        // Removed 'users' collection entry creation as per user directive "donot use users collection"
+
+        // Invalidate user/stats caches
+        serverCache.invalidate('users_*');
+        serverCache.invalidate('stats_*');
 
         return NextResponse.json({ success: true, uid: userRecord.uid, email: finalEmail });
 
@@ -446,6 +450,10 @@ export async function PUT(request: NextRequest) {
         // Use the collection based on the actual role (not the updated one)
         const updateCollectionName = getCollectionName(project, department, actualRole);
         await db.collection(updateCollectionName).doc(uid).update(firestoreUpdates);
+
+        // Invalidate caches
+        serverCache.invalidate('users_*');
+        serverCache.invalidate('stats_*');
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
@@ -568,6 +576,10 @@ export async function DELETE(request: NextRequest) {
         // C. Final Source of Truth Cleanup
         await db.collection('users').doc(uid).delete();
         console.log(`- Firestore: Final cleanup of 'users' collection`);
+
+        // Invalidate caches
+        serverCache.invalidate('users_*');
+        serverCache.invalidate('stats_*');
 
         return NextResponse.json({
             success: true,

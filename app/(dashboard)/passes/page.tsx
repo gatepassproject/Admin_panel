@@ -28,17 +28,31 @@ export default function PassPage() {
     const [filterStatus, setFilterStatus] = React.useState('All');
     const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
     const [selectedPass, setSelectedPass] = React.useState<any>(null);
+    const [pagination, setPagination] = React.useState({
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 1,
+        hasMore: false
+    });
 
-    const fetchPasses = async () => {
+    const fetchPasses = async (page = pagination.page) => {
         try {
             setIsLoading(true);
-            const url = filterStatus === 'All'
-                ? '/api/passes'
-                : `/api/passes?status=${filterStatus}`;
+            const statusParam = filterStatus !== 'All' ? `&status=${filterStatus}` : '';
+            const url = `/api/passes?page=${page}&limit=${pagination.limit}${statusParam}`;
+
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch passes');
             const data = await response.json();
-            setPasses(data);
+
+            // Handle both legacy array and new paginated object
+            if (data.data && data.pagination) {
+                setPasses(data.data);
+                setPagination(data.pagination);
+            } else {
+                setPasses(Array.isArray(data) ? data : []);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -46,11 +60,17 @@ export default function PassPage() {
         }
     };
 
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= pagination.totalPages) {
+            fetchPasses(newPage);
+        }
+    };
+
     React.useEffect(() => {
-        fetchPasses();
+        fetchPasses(1); // Reset to page 1 when filter changes
 
         // Auto-refresh every 30 seconds for "Live" data
-        const interval = setInterval(fetchPasses, 30000);
+        const interval = setInterval(() => fetchPasses(pagination.page), 30000);
         return () => clearInterval(interval);
     }, [filterStatus]);
 
@@ -285,6 +305,32 @@ export default function PassPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between px-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={pagination.page <= 1 || isLoading}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-30 hover:bg-slate-50 transition-all shadow-sm"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={!pagination.hasMore || isLoading}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-30 hover:bg-slate-50 transition-all shadow-sm"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Modal */}
             <PassDetailsModal
                 isOpen={!!selectedPass}

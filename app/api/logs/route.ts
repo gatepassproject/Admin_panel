@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db2 } from '@/lib/firebase-admin';
+import { serverCache } from '@/lib/cache';
 
 export async function GET(request: Request) {
     if (!db2) {
@@ -10,6 +11,11 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const limitParam = searchParams.get('limit');
         const limit = limitParam ? parseInt(limitParam) : 50;
+
+        // Check cache (30 sec TTL)
+        const cacheKey = `logs_${limit}`;
+        const cached = serverCache.get(cacheKey);
+        if (cached) return NextResponse.json(cached);
 
         // Fetch recent logs
         const snapshot = await db2.collection('gate_passes')
@@ -33,7 +39,9 @@ export async function GET(request: Request) {
             };
         });
 
-        return NextResponse.json({ logs });
+        const result = { logs };
+        serverCache.set(cacheKey, result, 30);
+        return NextResponse.json(result);
 
     } catch (error: any) {
         console.error('Logs API Error:', error);

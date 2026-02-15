@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db1 } from '@/lib/firebase-admin';
+import { serverCache } from '@/lib/cache';
 
 export async function GET() {
     if (!db1) {
@@ -7,6 +8,11 @@ export async function GET() {
     }
 
     try {
+        // Cache analytics for 5 minutes (expensive computation)
+        const cacheKey = 'analytics_global';
+        const cached = serverCache.get(cacheKey);
+        if (cached) return NextResponse.json(cached);
+
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -83,16 +89,20 @@ export async function GET() {
         const totalVisits = logs.length;
         const uniqueVisitors = new Set(logs.map((l: any) => l.student_id || l.uid)).size;
 
-        return NextResponse.json({
+        const result = {
             trafficData,
             peakHoursData,
             passTypeData,
             metrics: {
                 totalVisits,
                 uniqueVisitors,
-                avgStayTime: '4.2h' // Placeholder calculation
+                avgStayTime: '4.2h'
             }
-        });
+        };
+
+        serverCache.set(cacheKey, result, 300); // 5 min
+
+        return NextResponse.json(result);
 
     } catch (error: any) {
         console.error('Analytics API Error:', error);

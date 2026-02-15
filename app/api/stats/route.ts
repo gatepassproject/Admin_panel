@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db1, db2 } from '@/lib/firebase-admin';
 import { getDepartmentCollectionName, isValidDepartmentCode, type DepartmentCode, getDepartmentByCode } from '@/lib/constants/departments';
 import { getRequesterIdentity, getEffectiveDepartment, applyDepartmentFilter } from '@/lib/department-isolation';
+import { serverCache, cacheKeys } from '@/lib/cache';
 
 export async function GET(request: Request) {
     // Check if DB is initialized (it might be null if env vars are missing)
@@ -16,6 +17,15 @@ export async function GET(request: Request) {
         const department = getEffectiveDepartment(requester, null);
 
         const shouldFilter = !!department;
+
+        // Check cache first (TTL: 60 seconds)
+        const cacheKey = cacheKeys.stats(department || undefined);
+        const cached = serverCache.get(cacheKey);
+        if (cached) {
+            console.log(`[API/Stats] Cache HIT for ${cacheKey}`);
+            return NextResponse.json(cached);
+        }
+        console.log(`[API/Stats] Cache MISS for ${cacheKey}, fetching from Firestore...`);
 
         // 1. Get Student Count from App DB (Project 1)
         // Check both 'app_student' and 'add_student' (mentioned by user)
@@ -130,7 +140,7 @@ export async function GET(request: Request) {
 
         const weeklyStats = Array.from(weeklyStatsMap).map(([day, passes]) => ({ day, passes }));
 
-        return NextResponse.json({
+        const result = {
             students: studentsCount,
             faculty: facultyCount,
             activePasses: activePassesCount,
@@ -140,7 +150,12 @@ export async function GET(request: Request) {
             weeklyStats,
             department: department || 'all',
             timestamp: new Date().toISOString()
-        });
+        };
+
+        // Cache for 60 seconds
+        serverCache.set(cacheKey, result, 60);
+
+        return NextResponse.json(result);
     } catch (error: any) {
         console.error('API Error /api/stats:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
