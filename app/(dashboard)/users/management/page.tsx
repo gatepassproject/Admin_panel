@@ -7,7 +7,6 @@ import React from 'react';
 import {
     Search,
     Plus,
-    Upload,
     Briefcase,
     Mail,
     Trash2,
@@ -24,6 +23,7 @@ import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import { GLOBAL_ROLES } from '@/lib/department-isolation';
+import { BulkUserUpload } from '@/components/users/BulkUserUpload';
 
 export default function UniversalManagementPage() {
     const { user: currentUser } = useCurrentUser();
@@ -56,7 +56,8 @@ export default function UniversalManagementPage() {
         isDeleteModalOpen,
         setIsDeleteModalOpen,
         isDeleting,
-        userToDelete
+        userToDelete,
+        refresh
     } = useUserDashboard('', '2', deptFilter); // Fetch all from Project 2, filter in UI
 
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -102,6 +103,12 @@ export default function UniversalManagementPage() {
                             Web Admin Panel (IoT System)
                         </span>
                     </div>
+                    <BulkUserUpload
+                        role="admin"
+                        project="2"
+                        buttonLabel="Import Web Admin CSV"
+                        onImported={refresh}
+                    />
                     <Link
                         href={`/users/web-admin/add`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"

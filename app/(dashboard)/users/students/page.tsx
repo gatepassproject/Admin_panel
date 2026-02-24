@@ -6,7 +6,6 @@ import React from 'react';
 import {
     Search,
     Plus,
-    Upload,
     GraduationCap,
     Mail,
     Trash2,
@@ -22,6 +21,7 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { BulkUserUpload } from '@/components/users/BulkUserUpload';
 
 export default function StudentsPage() {
     const { user: currentUser } = useCurrentUser();
@@ -43,7 +43,8 @@ export default function StudentsPage() {
         isDeleteModalOpen,
         setIsDeleteModalOpen,
         isDeleting,
-        userToDelete
+        userToDelete,
+        refresh
     } = useUserDashboard('student', '1');
 
     const filteredStudents = students.filter(s => {
@@ -79,13 +80,12 @@ export default function StudentsPage() {
                             Mobile Apps (GatePass DB)
                         </span>
                     </div>
-                    <Link
-                        href="/utilities/bulk"
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-                    >
-                        <Upload className="w-4 h-4 text-[#c32026]" />
-                        <span>Bulk Upload</span>
-                    </Link>
+                    <BulkUserUpload
+                        role="student"
+                        project="1"
+                        buttonLabel="Bulk Upload CSV"
+                        onImported={refresh}
+                    />
                     <Link
                         href={`/users/students/add?project=1`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"

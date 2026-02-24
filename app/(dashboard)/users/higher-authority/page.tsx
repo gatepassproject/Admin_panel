@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
+import { BulkUserUpload } from '@/components/users/BulkUserUpload';
 
 export default function HigherAuthorityPage() {
     const {
@@ -38,7 +39,8 @@ export default function HigherAuthorityPage() {
         isDeleteModalOpen,
         setIsDeleteModalOpen,
         isDeleting,
-        userToDelete
+        userToDelete,
+        refresh
     } = useUserDashboard('higher_authority');
 
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -69,6 +71,12 @@ export default function HigherAuthorityPage() {
                             Mobile Apps (GatePass DB)
                         </span>
                     </div>
+                    <BulkUserUpload
+                        role="higher_authority"
+                        project="1"
+                        buttonLabel="Import Authority CSV"
+                        onImported={refresh}
+                    />
                     <Link
                         href={`/users/higher-authority/add?project=${project}`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"

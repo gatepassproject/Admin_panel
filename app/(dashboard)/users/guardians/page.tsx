@@ -25,6 +25,7 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { BulkUserUpload } from '@/components/users/BulkUserUpload';
 
 export default function ParentsPage() {
     const { user: currentUser } = useCurrentUser();
@@ -43,7 +44,8 @@ export default function ParentsPage() {
         isDeleteModalOpen,
         setIsDeleteModalOpen,
         isDeleting,
-        userToDelete
+        userToDelete,
+        refresh
     } = useUserDashboard('parent', '1', currentUser?.department || undefined);
 
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -79,6 +81,12 @@ export default function ParentsPage() {
                             Mobile Apps (GatePass DB)
                         </span>
                     </div>
+                    <BulkUserUpload
+                        role="parent"
+                        project="1"
+                        buttonLabel="Import Parents CSV"
+                        onImported={refresh}
+                    />
                     <Link
                         href={`/users/guardians/add?project=${project}`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#c32026] hover:bg-[#a61a20] text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-500/20 transition-all font-black"

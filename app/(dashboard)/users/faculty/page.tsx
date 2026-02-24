@@ -23,6 +23,7 @@ import { useUserDashboard } from '@/lib/hooks/useUserDashboard';
 import { ViewUserModal } from '@/components/ViewUserModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
+import { BulkUserUpload } from '@/components/users/BulkUserUpload';
 
 export default function FacultyPage() {
     const { user: currentUser } = useCurrentUser();
@@ -44,7 +45,8 @@ export default function FacultyPage() {
         isDeleteModalOpen,
         setIsDeleteModalOpen,
         isDeleting,
-        userToDelete
+        userToDelete,
+        refresh
     } = useUserDashboard('faculty', '1');
 
     const filteredFaculty = faculty.filter(f => {
@@ -73,6 +75,12 @@ export default function FacultyPage() {
                             Mobile Apps (GatePass DB)
                         </span>
                     </div>
+                    <BulkUserUpload
+                        role="faculty"
+                        project="1"
+                        buttonLabel="Import Faculty CSV"
+                        onImported={refresh}
+                    />
                     <Link
                         href={`/users/faculty/add?project=${project}`}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#1e3a5f] hover:bg-[#1e3a5f]/90 text-white text-sm font-black uppercase tracking-widest rounded-xl shadow-lg shadow-[#1e3a5f]/20 transition-all"
