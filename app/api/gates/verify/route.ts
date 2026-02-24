@@ -46,7 +46,10 @@ export async function POST(request: Request) {
         });
 
         // Parse result from output
-        let result = { success: false, message: 'Verification completed' };
+        let result: { success: boolean; message: string; access?: 'granted' | 'denied' } = {
+            success: false,
+            message: 'Verification completed'
+        };
         
         if (output.includes('ACCESS GRANTED')) {
             result = { success: true, message: 'Access Granted', access: 'granted' };

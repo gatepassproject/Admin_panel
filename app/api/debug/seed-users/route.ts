@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db1, auth1, db2, auth2, admin } from '@/lib/firebase-admin';
+import { db1, db2, adminAuth } from '@/lib/firebase-admin';
 
 const ADMIN_USERS = [
     {
@@ -31,7 +31,7 @@ const ADMIN_USERS = [
 ];
 
 async function seedUserToProject(userDataRaw: any, project: '1' | '2') {
-    const auth = project === '1' ? auth1 : auth2;
+    const auth = adminAuth;
     const db = project === '1' ? db1 : db2;
 
     if (!auth || !db) {

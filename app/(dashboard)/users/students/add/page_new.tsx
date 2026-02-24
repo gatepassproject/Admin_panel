@@ -168,6 +168,8 @@ export default function AddStudentPage() {
             }
             return newErrors;
         });
+
+        return result.isValid;
     };
 
     const handleFieldChange = (field: string, value: string) => {
@@ -216,7 +218,6 @@ export default function AddStudentPage() {
         let hasErrors = false;
         fieldsToValidate.forEach(field => {
             const value = formData[field as keyof typeof formData];
-            validateField(field, value);
             const result = validateField(field, value);
             if (!result) hasErrors = true;
         });

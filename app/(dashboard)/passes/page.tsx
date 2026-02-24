@@ -113,7 +113,7 @@ export default function PassPage() {
                 <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
                 <h3 className="text-xl font-bold">Error loading passes</h3>
                 <p className="text-slate-500">{error}</p>
-                <button onClick={fetchPasses} className="mt-4 px-6 py-2 bg-[#1e3a5f] text-white rounded-xl font-bold">Retry</button>
+                <button onClick={() => fetchPasses()} className="mt-4 px-6 py-2 bg-[#1e3a5f] text-white rounded-xl font-bold">Retry</button>
             </div>
         );
     }
@@ -131,7 +131,7 @@ export default function PassPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={fetchPasses}
+                        onClick={() => fetchPasses()}
                         className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                         title="Refresh List"
                     >

@@ -25,7 +25,7 @@ interface CacheEntry<T> {
 class ServerCache {
     private cache: Map<string, CacheEntry<any>>;
     private maxSize: number;
-    private cleanupInterval: NodeJS.Timer | null;
+    private cleanupInterval: ReturnType<typeof setInterval> | null;
 
     constructor(maxSize = 500) {
         this.cache = new Map();
