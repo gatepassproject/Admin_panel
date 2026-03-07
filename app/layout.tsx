@@ -24,7 +24,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{document.documentElement.removeAttribute('cz-shortcut-listen');document.body&&document.body.removeAttribute('cz-shortcut-listen');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}

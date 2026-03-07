@@ -12,12 +12,17 @@ export function middleware(request: NextRequest) {
         request.nextUrl.pathname.startsWith('/(dashboard)'); // Note: Next.js routing might not match (dashboard) in pathname, checking root and unrelated paths
 
     // Real check for dashboard routes (everything that isn't login, static, or api)
+    const isPublicPolicyPath =
+        request.nextUrl.pathname === '/privacy-policy' ||
+        request.nextUrl.pathname === '/account-deletion';
+
     const isProtectedPath = !request.nextUrl.pathname.startsWith('/_next') &&
         !request.nextUrl.pathname.startsWith('/static') &&
         !request.nextUrl.pathname.startsWith('/api') &&
         !request.nextUrl.pathname.startsWith('/favicon.ico') &&
         !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/reset-password');
+        !request.nextUrl.pathname.startsWith('/reset-password') &&
+        !isPublicPolicyPath;
 
     // 1. If user is NOT authenticated and tries to access protected routes
     if (!session && isProtectedPath) {
