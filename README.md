@@ -46,10 +46,3 @@ npm run build
 npm run start
 ```
 
-## Deployment
-Use the deployment guide:
-- `DEPLOYMENT.md`
-
-## GitHub Push Guide
-Use:
-- `GITHUB_SETUP.md`
