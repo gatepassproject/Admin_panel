@@ -25,17 +25,30 @@ export async function GET(request: Request) {
 
         const logs = snapshot.docs.map(doc => {
             const data = doc.data();
+            
+            // Helper to parse Firestore Timestamp or ISO string
+            const parseDate = (val: any) => {
+                if (!val) return new Date();
+                if (typeof val.toDate === 'function') return val.toDate();
+                if (typeof val === 'string' || typeof val === 'number') return new Date(val);
+                if (val._seconds !== undefined) return new Date(val._seconds * 1000);
+                if (val.seconds !== undefined) return new Date(val.seconds * 1000);
+                return new Date();
+            };
+
+            const timestamp = data.updated_at || data.created_at;
+            const dateObj = parseDate(timestamp);
+
             return {
                 id: doc.id,
                 user: data.student_name || data.full_name || 'Unknown User',
-                role: data.role || 'Student', // Default or fetch from user profile if needed
+                role: data.role || 'Student',
                 gate: data.gate || 'Main Gate',
-                type: (data.status === 'Outside' || data.status === 'Approved') ? 'Exit' : 'Entry', // Infer type
-                time: new Date(data.updated_at || data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                date: new Date(data.updated_at || data.created_at).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
+                type: (data.status === 'Outside' || data.status === 'Approved') ? 'Exit' : 'Entry',
+                time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                date: dateObj.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
                 status: data.status === 'Approved' ? 'Authorized' : data.status === 'Rejected' ? 'Denied' : data.status,
-                // Raw timestamp for sorting if needed
-                timestamp: data.updated_at || data.created_at
+                timestamp: dateObj.toISOString()
             };
         });
 
