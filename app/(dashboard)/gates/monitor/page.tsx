@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Activity,
     Cpu,
@@ -32,13 +32,6 @@ import {
     Line
 } from 'recharts';
 
-const gateStatusData = [
-    { name: 'Gate 1', current: 85, max: 100 },
-    { name: 'Gate 2', current: 62, max: 100 },
-    { name: 'Gate 3', current: 0, max: 100 }, // Offline
-    { name: 'Gate 4', current: 45, max: 100 },
-];
-
 const healthHistory = [
     { time: '12:00', cpu: 23, temp: 45, mem: 42 },
     { time: '12:05', cpu: 34, temp: 46, mem: 42 },
@@ -48,44 +41,40 @@ const healthHistory = [
     { time: '12:25', cpu: 38, temp: 48, mem: 44 },
 ];
 
-const liveFeed = [
-    {
-        id: 1,
-        type: 'entry',
-        user: 'Suresh Raina',
-        gate: 'Main Entrance 01',
-        time: 'Just Now',
-        status: 'Verified',
-    },
-    {
-        id: 2,
-        type: 'exit',
-        user: 'Rahul Kumar',
-        gate: 'Main Entrance 01',
-        time: '1 min ago',
-        status: 'Verified',
-    },
-    {
-        id: 3,
-        type: 'alert',
-        user: 'Unknown',
-        gate: 'Back Entrance 03',
-        time: '2 mins ago',
-        status: 'Access Denied',
-        detail: 'Invalid QR Signature',
-    },
-    {
-        id: 4,
-        type: 'entry',
-        user: 'Priya Sharma',
-        gate: 'Hostel Gate B',
-        time: '5 mins ago',
-        status: 'Verified',
-    },
-];
-
 export default function RealTimeMonitorPage() {
-    const [activeTab, setActiveTab] = React.useState('feed');
+    const [gates, setGates] = useState<any[]>([]);
+    const [logs, setLogs] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [lastRefresh, setLastRefresh] = useState(new Date());
+
+    const fetchData = async () => {
+        try {
+            const [gatesRes, logsRes] = await Promise.all([
+                fetch('/api/gates'),
+                fetch('/api/logs?limit=5')
+            ]);
+            
+            if (gatesRes.ok) {
+                const gatesData = await gatesRes.json();
+                setGates(gatesData);
+            }
+            if (logsRes.ok) {
+                const logsData = await logsRes.json();
+                setLogs(logsData.logs || []);
+            }
+            setLastRefresh(new Date());
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 10000); // 10s refresh
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="space-y-6 page-transition">
@@ -101,10 +90,10 @@ export default function RealTimeMonitorPage() {
                 <div className="flex items-center gap-3">
                     <div className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100 flex items-center gap-2">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">System Live: 99.8% Uptime</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
                     </div>
-                    <button className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
-                        <RefreshCw className="w-5 h-5" />
+                    <button onClick={fetchData} className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+                        <RefreshCw className={cn("w-5 h-5", isLoading && "animate-spin")} />
                     </button>
                 </div>
             </div>
@@ -206,32 +195,36 @@ export default function RealTimeMonitorPage() {
                             </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            {[1, 2, 3, 4].map((gate) => (
-                                <div key={gate} className={cn(
+                            {gates.length > 0 ? gates.map((gate, idx) => {
+                                const isOffline = gate.status === 'Offline' || gate.status === 'error';
+                                return (
+                                <div key={gate.id || idx} className={cn(
                                     "p-6 rounded-3xl border transition-all duration-300 group relative overflow-hidden",
-                                    gate === 3 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100 hover:border-blue-200"
+                                    isOffline ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100 hover:border-blue-200"
                                 )}>
                                     <div className="relative z-10 flex flex-col items-center text-center space-y-3">
                                         <Signal className={cn(
                                             "w-8 h-8",
-                                            gate === 3 ? "text-red-500" : "text-blue-500"
+                                            isOffline ? "text-red-500" : "text-blue-500"
                                         )} />
                                         <div>
-                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">Gate 0{gate}</h4>
-                                            <p className="text-[10px] font-medium text-slate-500 line-clamp-1">Main Entrance</p>
+                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{gate.name || `Gate 0${idx + 1}`}</h4>
+                                            <p className="text-[10px] font-medium text-slate-500 line-clamp-1">{gate.location || 'Entrance'}</p>
                                         </div>
                                         <div className={cn(
                                             "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
-                                            gate === 3 ? "bg-red-500 text-white" : "bg-emerald-500 text-white"
+                                            isOffline ? "bg-red-500 text-white" : "bg-emerald-500 text-white"
                                         )}>
-                                            {gate === 3 ? 'Ping Failure' : 'Latency: 12ms'}
+                                            {isOffline ? 'Offline' : gate.status || 'Online'}
                                         </div>
                                     </div>
                                     <div className="absolute top-[-10%] right-[-10%] w-20 h-20 opacity-[0.05] group-hover:scale-125 transition-transform">
                                         <Zap className="w-full h-full" />
                                     </div>
                                 </div>
-                            ))}
+                            )}) : (
+                                <div className="col-span-full text-center py-8 text-slate-500">No gates found or loading...</div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -244,25 +237,29 @@ export default function RealTimeMonitorPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {liveFeed.map((item) => (
+                        {logs.length > 0 ? logs.map((item) => {
+                            const isAlert = item.status === 'Denied' || item.status === 'Rejected';
+                            const type = isAlert ? 'alert' : (item.type?.toLowerCase() === 'exit' ? 'exit' : 'entry');
+
+                            return (
                             <div key={item.id} className="relative pl-6 pb-6 border-l border-slate-100 last:border-0 last:pb-0">
                                 {/* Connector Dot */}
                                 <div className={cn(
                                     "absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full border-2 border-white ring-4 ring-slate-50",
-                                    item.type === 'entry' && "bg-emerald-500",
-                                    item.type === 'exit' && "bg-blue-500",
-                                    item.type === 'alert' && "bg-red-500"
+                                    type === 'entry' && "bg-emerald-500",
+                                    type === 'exit' && "bg-blue-500",
+                                    type === 'alert' && "bg-red-500"
                                 )} />
 
                                 <div className="flex flex-col space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.time}</span>
-                                        {item.type === 'entry' ? (
+                                        {type === 'entry' ? (
                                             <div className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-widest border border-emerald-100">
                                                 <LogIn className="w-2.5 h-2.5" />
                                                 Entry
                                             </div>
-                                        ) : item.type === 'exit' ? (
+                                        ) : type === 'exit' ? (
                                             <div className="flex items-center gap-1 text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-widest border border-blue-100">
                                                 <LogOut className="w-2.5 h-2.5" />
                                                 Exit
@@ -285,15 +282,17 @@ export default function RealTimeMonitorPage() {
                                                 <p className="text-[10px] text-slate-500 font-medium truncate">{item.gate}</p>
                                             </div>
                                         </div>
-                                        {item.type === 'alert' && (
+                                        {type === 'alert' && (
                                             <div className="mt-2 text-[10px] font-bold text-red-500 bg-red-50/50 p-1.5 rounded-lg border border-red-100/50">
-                                                Error: {item.detail}
+                                                Status: {item.status}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        )}) : (
+                            <div className="text-center py-4 text-slate-500 text-sm">No recent activity</div>
+                        )}
                     </div>
 
                     <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-blue-400 hover:text-blue-500 transition-all">
