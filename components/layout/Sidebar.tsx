@@ -69,7 +69,6 @@ const navItems = [
         href: '/gates',
         subItems: [
             { title: 'Device List', href: '/gates' },
-            { title: 'Real-time Monitor', href: '/gates/monitor' },
         ],
     },
     {
