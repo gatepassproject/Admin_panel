@@ -77,7 +77,6 @@ const navItems = [
         href: '/analytics',
         subItems: [
             { title: 'Overview', href: '/analytics' },
-            { title: 'Reports Generator', href: '/analytics/reports' },
             { title: 'Gate Logs', href: '/analytics/logs' },
         ],
     },
